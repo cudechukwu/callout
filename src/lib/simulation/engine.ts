@@ -44,43 +44,35 @@ export const ROUND_DURATION_SECONDS = 300; // 5 minutes
 const EXCHANGE_DURATION_SECONDS = ROUND_DURATION_SECONDS / EXCHANGES_PER_ROUND;
 
 /**
- * Converts a skill/stat difference into a probability. This single
- * constant is the most consequential number in the whole engine — it's
- * what the friend's review flagged as needing empirical validation
- * rather than a guess (see LOCKED_DECISIONS.md > Decision 10). At the
- * maximum possible stat gap on a 1.0-5.0 scale (4.0), this produces:
- *   0.5 + 4.0 * 0.08 = 0.82 -> 82% base probability before situational
- *   modifiers (fatigue, damage), landing inside the design doc's
- *   75-85% elite-vs-novice target.
- * The balance harness is what actually confirms or corrects this —
- * treat it as a starting point, not a locked constant.
- */
-const ADJUSTMENT_FACTOR = 0.08;
-
-/**
  * How strongly a stat gap moves each kind of contest: probability =
- * 0.5 + gap x sensitivity (clamped 10-90%). Split by domain so, e.g.,
- * a fighter's striking edge can be made to count for more without also
- * amplifying grappling — the single global ADJUSTMENT_FACTOR compounded
- * wrestling's reach across several derived stats (see BALANCE_REPORT.md
- * > Sensitivity). Every value defaults to ADJUSTMENT_FACTOR, so the
- * default tuning is exactly the pre-split behavior; callers (the tuning
- * scripts) may pass a different tuning to simulateFight.
+ * 0.5 + gap x sensitivity (clamped 10-90%). Split by domain because one
+ * global factor could not be tuned without side effects: raising it
+ * enough for top builds to win consistently (20-0 Rampages attainable)
+ * also made wrestling absurdly dominant (see BALANCE_REPORT.md >
+ * Sensitivity). Simulation callers may pass a different tuning to
+ * simulateFight; the tuning scripts do.
  */
 export interface SimulationTuning {
-  /** Who gets to act, off the initiative gap (distance and clinch). */
+  /** Who gets to act, off the initiative gap (distance and clinch).
+   * Initiative is built from speed, Fight IQ and cardio, so raising this
+   * also raises the value of Fight IQ and cardio. */
   readonly initiativeSensitivity: number;
   /** Contested-action success, by action class. */
   readonly contestSensitivity: Readonly<Record<ActionClass, number>>;
 }
 
+/** Validated in scripts/rampage-validation.ts (frozen builds, bank and
+ * seeds): a 98-99 OVR build wins ~77% of fights against the CPU field
+ * (~0.5% perfect 20-fight Rampages), a 93-95 build ~73.5%; wrestling
+ * stays ~82% (High vs Low), Striker vs Wrestler ~43%. Previous default:
+ * .08 everywhere (a 98-99 build won ~68%, 20-0 essentially never). */
 export const DEFAULT_TUNING: SimulationTuning = {
-  initiativeSensitivity: ADJUSTMENT_FACTOR,
+  initiativeSensitivity: 0.22,
   contestSensitivity: {
-    striking: ADJUSTMENT_FACTOR,
-    takedown: ADJUSTMENT_FACTOR,
-    grappling: ADJUSTMENT_FACTOR,
-    movement: ADJUSTMENT_FACTOR,
+    striking: 0.18,
+    takedown: 0.1,
+    grappling: 0.08,
+    movement: 0.12,
   },
 };
 

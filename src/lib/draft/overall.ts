@@ -14,42 +14,50 @@ import type { AttributeSelections } from "../simulation/types";
  * Weights come from `scripts/ovr-calibration.ts`: least-squares fit of
  * win rate against a field of random CPU builds on the engine's full 10
  * ratings (8 visible + hidden speed/defense) — 5,000 sampled drafts x 150
- * fights, R^2 = 0.79 (vs 0.67 for a plain average of the 8 visible
- * ratings). Re-run that script and paste the output here if the engine
+ * fights, held-out R^2 = 0.90 (vs 0.74 for a plain average of the 8
+ * visible ratings). Refit after the per-domain sensitivity change
+ * (BALANCE_REPORT.md > Sensitivity); the previous fit was against the
+ * flat .08 engine. Re-run that script and paste the output here if the engine
  * or draft pool changes materially.
  */
-const WIN_RATE_INTERCEPT = -1.4112;
+const WIN_RATE_INTERCEPT = -2.8048;
 const WIN_RATE_WEIGHTS: Readonly<Record<keyof FullAttributeRatings, number>> = {
-  wrestling: 0.0858,
-  submissions: 0.0272,
-  boxing: 0.0279,
-  kickboxing: 0.0184,
-  power: 0.0233,
-  cardio: 0.0476,
-  chin: 0.0145,
-  fightIq: 0.0708,
-  defense: 0.0501,
-  speed: 0.0625,
+  wrestling: 0.1039,
+  submissions: 0.0331,
+  boxing: 0.0566,
+  kickboxing: 0.0335,
+  power: 0.023,
+  cardio: 0.0863,
+  chin: 0.0194,
+  fightIq: 0.1164,
+  defense: 0.1371,
+  speed: 0.1292,
 };
 
 /** OVR 70 = wins half its fights against the average CPU build. */
 const OVR_AT_EVEN = 70;
 /**
- * One OVR point per 0.625% of win rate against the field. Chosen so the
- * scale is fully used: the best possible draft from the whole pool lands
- * ~98, always taking the best of 3 lands ~90, random drafting ~73 — so
- * 95+ is reachable but takes a near-perfect build.
+ * One OVR point per (1 / OVR_PER_WIN_RATE) of win rate against the field.
+ * Chosen so the scale is fully used: the best possible draft from the
+ * whole pool lands ~98, always taking the best of 3 lands ~90, random
+ * drafting ~72 — so 95+ is reachable but takes a near-perfect build.
  */
-const OVR_PER_WIN_RATE = 160;
+const OVR_PER_WIN_RATE = 108;
 export const OVR_MIN = 40;
 export const OVR_MAX = 99;
 
-export function computeOverall(selections: AttributeSelections): number {
+/** Predicted win rate against the average CPU build (not against any
+ * particular opponent). Exposed for calibration and tests. */
+export function predictedFieldWinRate(selections: AttributeSelections): number {
   const ratings = buildFullAttributeRatings(selections);
-  let predictedWinRate = WIN_RATE_INTERCEPT;
+  let predicted = WIN_RATE_INTERCEPT;
   for (const key of Object.keys(WIN_RATE_WEIGHTS) as Array<keyof FullAttributeRatings>) {
-    predictedWinRate += ratings[key] * WIN_RATE_WEIGHTS[key];
+    predicted += ratings[key] * WIN_RATE_WEIGHTS[key];
   }
-  const raw = OVR_AT_EVEN + (predictedWinRate - 0.5) * OVR_PER_WIN_RATE;
+  return predicted;
+}
+
+export function computeOverall(selections: AttributeSelections): number {
+  const raw = OVR_AT_EVEN + (predictedFieldWinRate(selections) - 0.5) * OVR_PER_WIN_RATE;
   return Math.round(Math.min(OVR_MAX, Math.max(OVR_MIN, raw)));
 }

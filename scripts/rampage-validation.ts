@@ -7,7 +7,7 @@
  * rampage outcomes (random opponents from the bank), alongside the
  * independent-fights estimate.
  *
- * Usage: npx tsx scripts/rampage-validation.ts [buildsPerBucket] [rampagesPerBuild]
+ * Usage: npx tsx scripts/rampage-validation.ts [buildsPerBucket] [rampagesPerBuild] [tuningsJson]
  */
 import { generateCpuFighter } from "../src/lib/draft/cpuFighter";
 import { computeOverall } from "../src/lib/draft/overall";
@@ -30,10 +30,21 @@ const CANDIDATE: SimulationTuning = {
   initiativeSensitivity: 0.2,
   contestSensitivity: { striking: 0.18, takedown: 0.1, grappling: 0.08, movement: 0.12 },
 };
-const tunings: Array<[string, SimulationTuning]> = [
-  ["current (.08 everywhere)", DEFAULT_TUNING],
-  ["candidate (.20/.18/.10/.08/.12)", CANDIDATE],
-];
+// Optional 4th arg overrides the tunings: JSON [[label, init, strike, td, grap, move], ...]
+const tunings: Array<[string, SimulationTuning]> = process.argv[4]
+  ? (JSON.parse(process.argv[4]) as Array<[string, number, number, number, number, number]>).map(
+      ([label, init, st, td, gr, mv]) => [
+        label,
+        {
+          initiativeSensitivity: init,
+          contestSensitivity: { striking: st, takedown: td, grappling: gr, movement: mv },
+        },
+      ]
+    )
+  : [
+      ["current (.08 everywhere)", DEFAULT_TUNING],
+      ["candidate (.20/.18/.10/.08/.12)", CANDIDATE],
+    ];
 
 // ---- frozen inputs ----
 const bankRng = createRng(3003);

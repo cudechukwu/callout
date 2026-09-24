@@ -34,18 +34,19 @@ describe("simulateFight — tuning", () => {
   });
 
   it("higher sensitivity lets the stronger fighter win more often", () => {
-    const sharper = {
-      initiativeSensitivity: 0.2,
-      contestSensitivity: { striking: 0.2, takedown: 0.2, grappling: 0.2, movement: 0.2 },
+    // The pre-split behavior: every sensitivity at the old global .08.
+    const flat = {
+      initiativeSensitivity: 0.08,
+      contestSensitivity: { striking: 0.08, takedown: 0.08, grappling: 0.08, movement: 0.08 },
     };
     const runs = 600;
+    let flatWins = 0;
     let defaultWins = 0;
-    let sharperWins = 0;
     for (let seed = 0; seed < runs; seed++) {
+      if (simulateFight(strong, average, createRng(seed), flat).winnerId === "a") flatWins++;
       if (simulateFight(strong, average, createRng(seed)).winnerId === "a") defaultWins++;
-      if (simulateFight(strong, average, createRng(seed), sharper).winnerId === "a") sharperWins++;
     }
-    expect(sharperWins).toBeGreaterThan(defaultWins);
+    expect(defaultWins).toBeGreaterThan(flatWins);
   });
 });
 

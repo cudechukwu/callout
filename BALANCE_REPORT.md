@@ -330,6 +330,31 @@ Findings: initiative sensitivity is what makes cardio matter (initiative include
 
 ---
 
+## Adopted tuning (current defaults)
+
+**`DEFAULT_TUNING` is now initiative .22 / striking .18 / takedown .10 / grappling .08 / movement .12** (was .08 everywhere). Chosen as the gentlest setting from the sweeps that put top builds where the product wants them; OVR was then refit against the new engine. Every number in the older sections above (Current State, Fix 1-6, Finish-rate tuning) was measured under the flat .08 engine and is now historical.
+
+**Validation** (`npx tsx scripts/rampage-validation.ts`): 30 independently drafted builds per OVR bucket vs a frozen 500-CPU bank, plus 300 real 20-fight rampages per build. Builds within a bucket behave consistently (p10-p90 of field win % spans only ~2-3 points), so the result doesn't hinge on how a build was assembled.
+
+| OVR bucket (refit) | Field win % median (p10-p90) | Avg Rampage wins | P(18+) | P(20-0) measured / estimated |
+|---|---|---|---|---|
+| 90-92 | 69.7% (68-71) | 14.0 | 3.4% | 0.11% / 0.08% |
+| 93-95 | 72.0% (71-73) | 14.4 | 4.9% | 0.10% / 0.14% |
+| 96-97 | 73.8% (73-75) | 14.8 | 7.1% | 0.22% / 0.24% |
+| 98-99 | 76.0% (75-77) | 15.2 | 10.7% | 0.26% / 0.42% |
+
+Before (flat .08): 98-99 builds won ~68% (13.5 wins), 20-0 ~0.02%. **Target was ~0.5-1% for 98-99; measured 0.26% and estimated 0.42%, i.e. slightly short.** Not tuned further on purpose: the plan is to lock and wait for human playtests. If real play wants 20-0 more attainable, the next step is a slightly stronger setting (e.g. .24/.22/.11/.08/.12 estimated ~0.8% for 98-99, at the cost of a more one-sided striker-vs-balanced).
+
+**Archetype fixtures, 20,000 fights (was -> now):** Neutral decisions 66% -> 68%; High vs Low Cardio 64% -> 75%; High vs Low Wrestling 77% -> 82%; Striker vs Wrestler (striker) 35% -> 42%; Wrestler vs Balanced 74% -> 78%; Striker vs Balanced 62% -> 78%; Wrestler vs Submission Specialist 84% -> 92%; All-Elite vs All-Weak still ~100%. Finish mix for even fights is similar (KO 16%, TKO 3%, SUB 13%, DEC 68%).
+
+**Power:** not broken. With hidden speed/defense pinned, a Power 5 fighter deals ~18 head damage per fight (second only to Boxing) and wins ~26% of fights by finish vs ~17% for a neutral fighter — its value is finishes/volatility, which raw win rate (55%) doesn't show. Left alone.
+
+**OVR refit:** ten-rating fit R^2 rose 0.79 -> **0.90** (held-out 0.897; plain average of the 8 visible ratings 0.74) — ratings now explain far more of the outcome. Scale re-anchored so the best draft from the whole pool is ~98. Drafters who can see every rating: ~92 median, 95+ about a quarter of the time (hidden-rating players will be well below that). Random drafting centers on ~71.
+
+**Known trade-offs:** specialists now beat balanced builds more decisively (Striker vs Balanced 78%); initiative sensitivity also raises Fight IQ and cardio value (both feed initiative); neutral fights are ~2 points more decision-heavy.
+
+---
+
 ## How to continue this work
 
 ```bash
