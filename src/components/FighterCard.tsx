@@ -31,7 +31,7 @@ export function FighterCard({
       className={`border border-t-[3px] border-border border-t-accent bg-surface ${className}`}
     >
       <div className="flex items-baseline justify-between gap-4 border-b border-border px-6 py-5">
-        <h3 className="font-display text-4xl font-black leading-none tracking-tight uppercase">
+        <h3 className="font-display text-2xl font-semibold leading-none tracking-[0.06em] uppercase">
           {name}
         </h3>
         {record && (
@@ -42,7 +42,7 @@ export function FighterCard({
       </div>
       {overall !== undefined && (
         <div className="flex items-baseline gap-2 border-b border-border px-6 py-3">
-          <span className="font-display text-5xl font-black leading-none tabular-nums text-accent">
+          <span className="font-display text-4xl font-bold leading-none tabular-nums text-accent">
             {overall}
           </span>
           <span className="font-mono text-sm tracking-widest text-text-muted uppercase">OVR</span>

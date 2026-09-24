@@ -109,7 +109,7 @@ export function LiveFight() {
           <div className="flex min-w-0 items-center gap-3">
             <Avatar name={PLAYER.name} corner="red" className="cut-sm h-11 w-11 shrink-0" />
             <div className="min-w-0">
-              <p className="font-display text-xl leading-none font-black tracking-wide uppercase">{PLAYER.name}</p>
+              <p className="font-display text-base leading-none font-semibold tracking-[0.06em] uppercase">{PLAYER.name}</p>
               <p className="mt-0.5 text-xs text-chalk">
                 <span className="font-numeric text-sm font-bold text-belt-gold">{PLAYER_OVERALL}</span> overall
               </p>
@@ -121,7 +121,7 @@ export function LiveFight() {
           </div>
           <div className="flex min-w-0 items-center justify-end gap-3">
             <div className="min-w-0 text-right">
-              <p className="font-display text-xl leading-none font-black tracking-wide uppercase">
+              <p className="font-display text-base leading-none font-semibold tracking-[0.06em] uppercase">
                 {fight?.cpu.name ?? " "}
               </p>
               <p className="mt-0.5 text-xs text-chalk">
@@ -148,7 +148,7 @@ export function LiveFight() {
       <ol className="mt-4 flex min-h-[13.5rem] flex-col gap-1.5 px-5 pb-5" aria-live="off">
         {done && fight ? (
           <li className="animate-finish-slam cut-sm bg-corner-red px-4 py-5 text-center">
-            <p className="font-display text-4xl leading-none font-black tracking-wide text-bone uppercase">
+            <p className="font-display text-2xl leading-none font-semibold tracking-[0.06em] text-bone uppercase">
               {fight.winnerName} wins
             </p>
             <p className="mt-1 text-sm text-bone/85">

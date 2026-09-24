@@ -67,7 +67,7 @@ export function RunGrid({ fights }: RunGridProps) {
               {index + 1}
             </span>
             <span
-              className={`absolute right-0 bottom-0 px-1.5 py-0.5 font-display text-sm leading-none font-extrabold ${
+              className={`absolute right-0 bottom-0 px-1.5 py-0.5 font-display text-sm leading-none font-bold ${
                 fight.won ? "bg-corner-red text-bone" : "bg-line-strong text-chalk"
               }`}
             >

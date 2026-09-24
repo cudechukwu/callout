@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Big_Shoulders, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
+import { AmbientBackdrop } from "@/components/AmbientBackdrop";
 import { TopBar } from "@/components/TopBar";
 
 const bigShoulders = Big_Shoulders({
@@ -30,6 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${bigShoulders.variable} ${plexSans.variable}`}>
       <body>
+        <AmbientBackdrop />
         <TopBar />
         {children}
       </body>

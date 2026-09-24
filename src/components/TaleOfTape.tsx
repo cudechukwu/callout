@@ -27,13 +27,13 @@ function Header({ side, corner }: { side: Side; corner: "red" | "white" }) {
         className={`aspect-[4/5] w-full max-w-[11rem] ${isRed ? "cut-left" : "cut-right"} sm:max-w-[12.5rem]`}
       />
       <div className={`mt-3 ${isRed ? "text-left" : "text-right"}`}>
-        <p className="font-display text-3xl leading-none font-black tracking-wide text-bone uppercase sm:text-5xl">
+        <p className="font-display text-xl leading-tight font-semibold tracking-[0.06em] text-bone uppercase sm:text-3xl">
           {side.name}
         </p>
         <p className="mt-1 text-sm text-chalk">
           {corner === "white" ? "CPU" : side.record ? `${side.record.wins}–${side.record.losses}` : "Your fighter"}
         </p>
-        <p className="mt-2 font-display text-6xl leading-[0.8] font-black text-belt-gold sm:text-7xl">
+        <p className="mt-2 font-display text-5xl leading-[0.8] font-bold text-belt-gold sm:text-6xl">
           <span className="font-numeric">{side.overall}</span>
           <span className="ml-2 text-lg font-bold text-chalk">OVR</span>
         </p>
@@ -52,7 +52,7 @@ export function TaleOfTape({ player, cpu }: TaleOfTapeProps) {
     <section aria-label="Tale of the tape" className="cut bg-panel px-4 py-6 sm:px-8 sm:py-8">
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-6">
         <Header side={player} corner="red" />
-        <p className="font-display text-5xl font-black text-belt-gold italic sm:text-7xl">VS</p>
+        <p className="font-display text-3xl font-semibold tracking-[0.12em] text-belt-gold sm:text-4xl">VS</p>
         <Header side={cpu} corner="white" />
       </div>
 

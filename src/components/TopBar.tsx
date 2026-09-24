@@ -46,7 +46,7 @@ export function TopBar() {
           href="/"
           onClick={confirmLeave}
           aria-label="Five-Star MMA, home"
-          className="flex items-center gap-2 font-display text-xl leading-none font-black tracking-wide whitespace-nowrap text-bone uppercase sm:text-2xl"
+          className="flex items-center gap-2 font-display text-lg leading-none font-semibold tracking-[0.08em] whitespace-nowrap text-bone uppercase sm:text-xl"
         >
           <Star />
           Five-Star MMA
@@ -56,7 +56,7 @@ export function TopBar() {
           {!onDraft && (
             <Link
               href="/draft"
-              className="cut-sm bg-corner-red px-3 py-1.5 font-display text-lg font-extrabold tracking-wide whitespace-nowrap text-bone uppercase transition-colors hover:bg-corner-red-bright sm:px-4"
+              className="cut-sm bg-corner-red px-3 py-1.5 font-display text-base font-semibold tracking-[0.08em] whitespace-nowrap text-bone uppercase transition-colors hover:bg-corner-red-bright sm:px-4"
             >
               Play
             </Link>

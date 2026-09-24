@@ -58,7 +58,7 @@ export function Avatar({ name, corner = "neutral", initials = false, className =
       className={`relative overflow-hidden ${className}`}
       style={{ background: BACKDROP[corner] }}
     >
-      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMax slice">
+      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMin slice">
         {/* rim light behind the bust */}
         <ellipse cx="50" cy="46" rx="26" ry="30" fill={rim} opacity="0.12" />
         <path d={shoulders} fill={fill} stroke={rim} strokeOpacity="0.35" strokeWidth="0.8" />
@@ -77,7 +77,7 @@ export function Avatar({ name, corner = "neutral", initials = false, className =
         {beard && <path d="M36 46 C 38 62, 62 62, 64 46 C 60 54, 40 54, 36 46 Z" fill={fill} />}
       </svg>
       {initials && (
-        <span className="absolute inset-x-0 bottom-1 text-center font-display text-[0.7em] font-extrabold tracking-wide text-bone/90">
+        <span className="absolute inset-x-0 bottom-1 text-center font-display text-[0.7em] font-semibold tracking-wide text-bone/90">
           {initialsOf(name)}
         </span>
       )}

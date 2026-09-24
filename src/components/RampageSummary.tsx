@@ -36,7 +36,7 @@ export function RampageSummary({
         <div className="flex items-center gap-4">
           <Avatar name={fighterName} corner="red" className="cut-sm h-16 w-16 shrink-0" />
           <div className="min-w-0">
-            <p className="truncate font-display text-3xl leading-none font-black tracking-wide uppercase">
+            <p className="truncate font-display text-2xl leading-none font-semibold tracking-[0.06em] uppercase">
               {fighterName}
             </p>
             <p className={`mt-1 text-sm ${perfect ? "text-canvas/80" : "text-chalk"}`}>
@@ -50,7 +50,7 @@ export function RampageSummary({
         <p className={`mt-6 text-sm ${perfect ? "text-canvas/80" : "text-chalk"}`}>
           {perfect ? "Perfect rampage" : "Rampage complete"}
         </p>
-        <p className="font-display text-9xl leading-[0.85] font-black tabular-nums">
+        <p className="font-display text-7xl leading-[0.85] font-bold tabular-nums sm:text-8xl">
           {summary.wins}–{summary.losses}
         </p>
         <dl className="mt-5 grid grid-cols-3 gap-4">

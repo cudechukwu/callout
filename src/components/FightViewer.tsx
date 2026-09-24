@@ -78,7 +78,7 @@ export function FightViewer({
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
           <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
             <Avatar name={playerName} corner="red" className="cut-sm h-12 w-12 shrink-0 sm:h-14 sm:w-14" />
-            <p className="font-display text-xl leading-[0.95] font-black tracking-wide break-words uppercase sm:text-3xl">
+            <p className="font-display text-base leading-[1.05] font-semibold tracking-[0.06em] break-words uppercase sm:text-2xl">
               {playerName}
             </p>
           </div>
@@ -92,7 +92,7 @@ export function FightViewer({
           </div>
           <div className="flex min-w-0 flex-col items-end gap-2 sm:flex-row-reverse sm:items-center sm:gap-3">
             <Avatar name={opponentName} corner="white" className="cut-sm h-12 w-12 shrink-0 sm:h-14 sm:w-14" />
-            <p className="text-right font-display text-xl leading-[0.95] font-black tracking-wide break-words uppercase sm:text-3xl">
+            <p className="text-right font-display text-base leading-[1.05] font-semibold tracking-[0.06em] break-words uppercase sm:text-2xl">
               {opponentName}
             </p>
           </div>
@@ -117,7 +117,7 @@ export function FightViewer({
             latest.actorId === playerId ? "bg-corner-red text-bone" : "bg-corner-white text-canvas"
           } cut`}
         >
-          <p className="font-display text-6xl leading-none font-black tracking-wide uppercase sm:text-8xl">
+          <p className="font-display text-4xl leading-none font-semibold tracking-[0.1em] uppercase sm:text-6xl">
             {FINISH_LABELS[finish]}
           </p>
         </div>

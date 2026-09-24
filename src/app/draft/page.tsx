@@ -219,7 +219,7 @@ export default function DraftPage() {
       <main className="animate-screen-in mx-auto flex min-h-[calc(100svh-3.5rem)] w-full max-w-md flex-col justify-center px-4 py-10">
         <div className="animate-rise-in">
           <p className="text-chalk">Draft complete</p>
-          <h1 className="mt-1 font-display text-6xl leading-[0.9] font-black tracking-wide uppercase">
+          <h1 className="mt-1 font-display text-[clamp(1.9rem,6vw,2.75rem)] leading-none font-semibold tracking-[0.07em] uppercase">
             Name your fighter
           </h1>
         </div>

@@ -40,10 +40,24 @@ export function FighterSheet({
   return (
     <div className="cut relative bg-panel">
       <div className="grid sm:grid-cols-[minmax(0,15rem)_1fr]">
-        <div className="relative">
-          <Avatar name={name} corner={corner} className="aspect-[5/3] w-full sm:h-full sm:aspect-auto sm:min-h-[22rem]" />
+        {/* Phone: a compact header row. Larger screens: the tall portrait. */}
+        <div className="flex items-center gap-4 border-b border-line px-5 py-4 sm:hidden">
+          <Avatar name={name} corner={corner} className="cut-sm h-20 w-20 shrink-0" />
+          <div className="min-w-0">
+            <h2 className="font-display text-2xl leading-none font-semibold tracking-[0.06em] text-bone uppercase">
+              {name}
+            </h2>
+            {record && (
+              <p className="mt-1 font-numeric text-lg text-chalk">
+                {record.wins}–{record.losses}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="relative hidden sm:block">
+          <Avatar name={name} corner={corner} className="h-full min-h-[22rem] w-full" />
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-canvas via-canvas/80 to-transparent px-5 pt-16 pb-4">
-            <h2 className="font-display text-4xl leading-none font-black tracking-wide text-bone uppercase">
+            <h2 className="font-display text-2xl leading-none font-semibold tracking-[0.06em] text-bone uppercase">
               {name}
             </h2>
             {record && (
@@ -57,7 +71,7 @@ export function FighterSheet({
         <div className="px-5 py-5 sm:px-7">
           <div className="flex items-end justify-between border-b border-line pb-4">
             <p className="text-sm text-chalk">Overall</p>
-            <p className="font-display text-7xl leading-[0.8] font-black text-belt-gold">
+            <p className="font-display text-6xl leading-[0.8] font-bold text-belt-gold">
               {reveal ? <CountUp value={overall} delayMs={500} /> : <span className="font-numeric">{overall}</span>}
             </p>
           </div>

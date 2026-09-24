@@ -87,13 +87,13 @@ export function FightResultScreen({
           <Avatar name={winnerName} corner={won ? "red" : "white"} className="h-full w-full opacity-90" />
         </div>
         <p
-          className={`font-display text-8xl leading-[0.85] font-black tracking-wide uppercase sm:text-9xl ${
+          className={`font-display text-6xl leading-[0.9] font-semibold tracking-[0.07em] uppercase sm:text-7xl ${
             won ? "text-bone" : "text-chalk"
           }`}
         >
           {won ? "Win" : "Loss"}
         </p>
-        <p className="mt-3 font-display text-3xl font-extrabold tracking-wide text-bone uppercase sm:text-4xl">
+        <p className="mt-3 font-display text-xl font-semibold tracking-[0.07em] text-bone uppercase sm:text-2xl">
           {METHOD_LABELS[result.method]}
           {result.method !== "DEC" && (
             <span className="ml-3 text-bone/80">
@@ -109,8 +109,8 @@ export function FightResultScreen({
 
       <section className="cut mt-4 bg-panel px-5 py-4 sm:px-8" aria-label="Fight stats">
         <div className="mb-1 flex justify-between border-b border-line pb-2">
-          <span className="font-display text-lg font-extrabold tracking-wide uppercase">{playerName}</span>
-          <span className="font-display text-lg font-extrabold tracking-wide uppercase">{opponentName}</span>
+          <span className="font-display text-base font-semibold tracking-[0.06em] uppercase">{playerName}</span>
+          <span className="font-display text-base font-semibold tracking-[0.06em] uppercase">{opponentName}</span>
         </div>
         <StatRow
           label="Significant strikes"
