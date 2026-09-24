@@ -56,7 +56,7 @@ function StatRow({
           <div className="h-full bg-corner-red" style={{ width: `${(playerNumber / total) * 100}%` }} />
         </div>
         <div className="bg-line" style={{ width: "50%" }}>
-          <div className="h-full bg-corner-blue" style={{ width: `${(opponentNumber / total) * 100}%` }} />
+          <div className="h-full bg-corner-white" style={{ width: `${(opponentNumber / total) * 100}%` }} />
         </div>
       </div>
     </div>
@@ -79,12 +79,12 @@ export function FightResultScreen({
   const winnerName = won ? playerName : opponentName;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-8">
+    <main className="animate-screen-in mx-auto w-full max-w-3xl px-4 py-8">
       <section
         className={`cut animate-rise-in relative overflow-hidden px-6 py-8 sm:px-10 ${won ? "bg-corner-red" : "bg-panel-raised"}`}
       >
         <div aria-hidden="true" className="absolute inset-y-0 right-0 hidden w-52 sm:block">
-          <Avatar name={winnerName} corner={won ? "red" : "blue"} className="h-full w-full opacity-90" />
+          <Avatar name={winnerName} corner={won ? "red" : "white"} className="h-full w-full opacity-90" />
         </div>
         <p
           className={`font-display text-8xl leading-[0.85] font-black tracking-wide uppercase sm:text-9xl ${

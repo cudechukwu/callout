@@ -1,25 +1,29 @@
 @import "tailwindcss";
 
 /*
- * Fight-night broadcast language. Colour carries meaning here:
- *  - corner red is always the player, corner blue is always the CPU
+ * Fight-night broadcast language, in black, bone and red. Colour carries
+ * meaning:
+ *  - corner red is always the player, corner white is always the CPU
  *  - belt gold appears only for ratings and achievements (OVR, perfect run)
  * Old token names (bg, surface, accent, ...) stay as aliases so nothing
  * that still references them breaks.
  */
 :root {
-  --canvas: #0f1724;
-  --panel: #17212f;
-  --panel-raised: #1e2b3d;
-  --line: #2a3850;
-  --line-strong: #3d506d;
-  --bone: #eef1f6;
-  --chalk: #8e9aaf;
-  --chalk-faint: #5d6b83;
-  --corner-red: #e63946;
-  --corner-red-bright: #ff5361;
-  --corner-blue: #4c8dff;
+  --canvas: #0a0a0b;
+  --panel: #141416;
+  --panel-raised: #1d1d20;
+  --line: #2b2b30;
+  --line-strong: #3d3d44;
+  --bone: #f3f1ec;
+  --chalk: #a1a1a8;
+  --chalk-faint: #66666e;
+  --corner-red: #e8343f;
+  --corner-red-bright: #ff5560;
+  --corner-white: #ece9e2;
   --belt-gold: #f4b93a;
+  /* light bands on the landing page */
+  --paper: #f3f1ec;
+  --ink: #0a0a0b;
 
   --color-bg: var(--canvas);
   --color-surface: var(--panel);
@@ -45,8 +49,10 @@
   --color-chalk-faint: var(--chalk-faint);
   --color-corner-red: var(--corner-red);
   --color-corner-red-bright: var(--corner-red-bright);
-  --color-corner-blue: var(--corner-blue);
+  --color-corner-white: var(--corner-white);
   --color-belt-gold: var(--belt-gold);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
 
   --color-bg: var(--color-bg);
   --color-surface: var(--color-surface);
@@ -66,12 +72,24 @@
 
 body {
   background:
-    radial-gradient(1200px 600px at 50% -10%, #1a2740 0%, transparent 60%),
+    radial-gradient(1100px 520px at 50% -12%, #232326 0%, transparent 62%),
     var(--canvas);
   background-attachment: fixed;
   color: var(--bone);
   font-family: var(--font-body);
   min-height: 100vh;
+}
+
+/* Fine film grain over everything: takes the digital flatness off. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
 .font-numeric {
@@ -187,3 +205,45 @@ body {
 
 /* Old name, kept for any remaining reference. */
 .animate-row-in { opacity: 0; animation: rise-in 320ms ease-out forwards; }
+
+/* ---- Landing and site-wide life ---- */
+
+/* Every screen eases in instead of snapping. */
+@keyframes screen-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.animate-screen-in { animation: screen-in 340ms ease-out both; }
+
+/* Headline lines rise out of a mask, one after another. */
+@keyframes line-up { from { transform: translateY(105%); } to { transform: translateY(0); } }
+.animate-line-up { animation: line-up 760ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* Slow-moving arena light. */
+@keyframes spot-sway {
+  0%, 100% { transform: translateX(-3%) rotate(-1.5deg); opacity: 0.85; }
+  50%      { transform: translateX(3%) rotate(1.5deg); opacity: 1; }
+}
+.animate-spot-sway { animation: spot-sway 9s ease-in-out infinite; }
+
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.animate-marquee { animation: marquee 34s linear infinite; }
+
+@keyframes live-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.animate-live-dot { animation: live-dot 1.2s ease-in-out infinite; }
+
+/* Buttons catch the light on hover. */
+.btn-shine { position: relative; overflow: hidden; transition: transform 160ms ease, background-color 160ms ease; }
+.btn-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.3) 50%, transparent 65%);
+  transform: translateX(-130%);
+  transition: transform 650ms ease;
+}
+.btn-shine:hover { transform: translateY(-2px); }
+.btn-shine:hover::after { transform: translateX(130%); }
+.btn-shine:active { transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-line-up, .animate-screen-in { opacity: 1; transform: none; }
+  .animate-marquee { animation: none; }
+}

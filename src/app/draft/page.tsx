@@ -216,7 +216,7 @@ export default function DraftPage() {
 
   if (phase === "naming") {
     return (
-      <main className="mx-auto flex min-h-[calc(100svh-3.5rem)] w-full max-w-md flex-col justify-center px-4 py-10">
+      <main className="animate-screen-in mx-auto flex min-h-[calc(100svh-3.5rem)] w-full max-w-md flex-col justify-center px-4 py-10">
         <div className="animate-rise-in">
           <p className="text-chalk">Draft complete</p>
           <h1 className="mt-1 font-display text-6xl leading-[0.9] font-black tracking-wide uppercase">
@@ -263,7 +263,7 @@ export default function DraftPage() {
     // on mount — also what the server renders, so the first client paint
     // matches it exactly (no hydration mismatch).
     return (
-      <main className="flex min-h-[calc(100svh-3.5rem)] items-center justify-center px-6">
+      <main className="animate-screen-in flex min-h-[calc(100svh-3.5rem)] items-center justify-center px-6">
         <p className="text-chalk">Setting up the draft…</p>
       </main>
     );
@@ -292,7 +292,7 @@ export default function DraftPage() {
   if (phase === "complete" && playerSnapshot) {
     return (
       <>
-        <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8">
+        <main className="animate-screen-in mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8">
           <div>
             <p className="text-chalk">Your fighter is ready</p>
           </div>
@@ -328,7 +328,7 @@ export default function DraftPage() {
     return (
       <>
         {hud}
-        <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
+        <main className="animate-screen-in mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
           {rampageStart !== null && (
             <p className="text-center text-chalk">
               Fight {rampageFights.length + 1} of {RAMPAGE_LENGTH}

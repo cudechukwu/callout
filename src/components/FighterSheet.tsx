@@ -29,7 +29,7 @@ export function FighterSheet({
   reveal = false,
   record,
 }: FighterSheetProps) {
-  const barColor = corner === "blue" ? "bg-corner-blue" : "bg-corner-red";
+  const barColor = corner === "white" ? "bg-corner-white" : "bg-corner-red";
   const values = VISIBLE_ATTRIBUTES.map((a) => ratingToDisplay(selections[a].sourceFighter[a]));
   const highest = Math.max(...values);
   const lowest = Math.min(...values);

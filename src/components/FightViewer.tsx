@@ -91,7 +91,7 @@ export function FightViewer({
             </p>
           </div>
           <div className="flex min-w-0 flex-col items-end gap-2 sm:flex-row-reverse sm:items-center sm:gap-3">
-            <Avatar name={opponentName} corner="blue" className="cut-sm h-12 w-12 shrink-0 sm:h-14 sm:w-14" />
+            <Avatar name={opponentName} corner="white" className="cut-sm h-12 w-12 shrink-0 sm:h-14 sm:w-14" />
             <p className="text-right font-display text-xl leading-[0.95] font-black tracking-wide break-words uppercase sm:text-3xl">
               {opponentName}
             </p>
@@ -114,10 +114,10 @@ export function FightViewer({
         <div
           key={latest.tally ? revealedCount : 0}
           className={`animate-finish-slam mt-4 px-4 py-5 text-center ${
-            latest.actorId === playerId ? "bg-corner-red" : "bg-corner-blue"
+            latest.actorId === playerId ? "bg-corner-red text-bone" : "bg-corner-white text-canvas"
           } cut`}
         >
-          <p className="font-display text-6xl leading-none font-black tracking-wide text-bone uppercase sm:text-8xl">
+          <p className="font-display text-6xl leading-none font-black tracking-wide uppercase sm:text-8xl">
             {FINISH_LABELS[finish]}
           </p>
         </div>
@@ -130,7 +130,7 @@ export function FightViewer({
           return (
             <li
               key={`${moment.round}-${moment.fightTimeSeconds}-${revealedCount - index}`}
-              className={`${isMine ? "animate-from-left border-l-4 border-corner-red" : "animate-from-right border-r-4 border-corner-blue text-right"} bg-panel px-4 ${
+              className={`${isMine ? "animate-from-left border-l-4 border-corner-red" : "animate-from-right border-r-4 border-corner-white text-right"} bg-panel px-4 ${
                 index === 0 ? "py-4" : "py-2"
               }`}
               style={{ opacity: Math.max(0.35, 1 - index * 0.16) }}

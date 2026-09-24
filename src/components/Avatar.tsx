@@ -1,15 +1,15 @@
 import { AVATAR_IMAGES, hashName, initialsOf } from "@/lib/avatars";
 
-export type Corner = "red" | "blue" | "neutral";
+export type Corner = "red" | "white" | "neutral";
 
 const BACKDROP: Record<Corner, string> = {
-  red: "radial-gradient(120% 90% at 50% 0%, #6b1f2b 0%, #2a1a26 55%, #17212f 100%)",
-  blue: "radial-gradient(120% 90% at 50% 0%, #1f4b8f 0%, #1a2b47 55%, #17212f 100%)",
-  neutral: "radial-gradient(120% 90% at 50% 0%, #3a4a66 0%, #1e2b3d 60%, #17212f 100%)",
+  red: "radial-gradient(120% 90% at 50% 0%, #74202b 0%, #2b171c 55%, #141416 100%)",
+  white: "radial-gradient(120% 90% at 50% 0%, #77777f 0%, #2c2c31 55%, #141416 100%)",
+  neutral: "radial-gradient(120% 90% at 50% 0%, #46464d 0%, #232327 60%, #141416 100%)",
 };
 const RIM: Record<Corner, string> = {
   red: "#ff5361",
-  blue: "#7aa9ff",
+  white: "#e4e1da",
   neutral: "#8e9aaf",
 };
 

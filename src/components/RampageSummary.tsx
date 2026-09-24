@@ -31,7 +31,7 @@ export function RampageSummary({
   const perfect = summary.fights === RAMPAGE_LENGTH && summary.losses === 0;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-8">
+    <main className="animate-screen-in mx-auto w-full max-w-3xl px-4 py-8">
       <section className={`cut animate-rise-in px-6 py-8 sm:px-10 ${perfect ? "bg-belt-gold text-canvas" : "bg-panel"}`}>
         <div className="flex items-center gap-4">
           <Avatar name={fighterName} corner="red" className="cut-sm h-16 w-16 shrink-0" />

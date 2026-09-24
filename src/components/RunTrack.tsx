@@ -59,7 +59,7 @@ export function RunGrid({ fights }: RunGridProps) {
           title={`${fight.opponentName}: ${fight.won ? "won" : "lost"} by ${METHOD_LABELS[fight.method]}`}
         >
           <div className="cut-sm relative aspect-square overflow-hidden">
-            <Avatar name={fight.opponentName} corner="blue" className="h-full w-full" />
+            <Avatar name={fight.opponentName} corner="white" className="h-full w-full" />
             <div
               className={`absolute inset-0 ${fight.won ? "bg-corner-red/10" : "bg-canvas/70"}`}
             />

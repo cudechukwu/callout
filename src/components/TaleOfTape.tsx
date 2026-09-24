@@ -17,7 +17,7 @@ interface TaleOfTapeProps {
   cpu: Side;
 }
 
-function Header({ side, corner }: { side: Side; corner: "red" | "blue" }) {
+function Header({ side, corner }: { side: Side; corner: "red" | "white" }) {
   const isRed = corner === "red";
   return (
     <div className={`relative flex flex-col ${isRed ? "items-start" : "items-end"}`}>
@@ -31,7 +31,7 @@ function Header({ side, corner }: { side: Side; corner: "red" | "blue" }) {
           {side.name}
         </p>
         <p className="mt-1 text-sm text-chalk">
-          {corner === "blue" ? "CPU" : side.record ? `${side.record.wins}–${side.record.losses}` : "Your fighter"}
+          {corner === "white" ? "CPU" : side.record ? `${side.record.wins}–${side.record.losses}` : "Your fighter"}
         </p>
         <p className="mt-2 font-display text-6xl leading-[0.8] font-black text-belt-gold sm:text-7xl">
           <span className="font-numeric">{side.overall}</span>
@@ -43,7 +43,7 @@ function Header({ side, corner }: { side: Side; corner: "red" | "blue" }) {
 }
 
 /**
- * Head to head, broadcast style: red corner (you) on the left, blue
+ * Head to head, broadcast style: red corner (you) on the left, white
  * corner (CPU) on the right, every attribute meeting in the middle.
  * The higher number in each row is brighter.
  */
@@ -53,7 +53,7 @@ export function TaleOfTape({ player, cpu }: TaleOfTapeProps) {
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-6">
         <Header side={player} corner="red" />
         <p className="font-display text-5xl font-black text-belt-gold italic sm:text-7xl">VS</p>
-        <Header side={cpu} corner="blue" />
+        <Header side={cpu} corner="white" />
       </div>
 
       <div className="mt-8 border-t border-line pt-4">
@@ -89,7 +89,7 @@ export function TaleOfTape({ player, cpu }: TaleOfTapeProps) {
               <div className="flex items-center gap-2">
                 <div className="h-2 w-full max-w-[14rem] overflow-hidden bg-line" aria-hidden="true">
                   <div
-                    className={`animate-bar-fill h-full w-full bg-corner-blue ${right < left ? "opacity-45" : ""}`}
+                    className={`animate-bar-fill h-full w-full bg-corner-white ${right < left ? "opacity-45" : ""}`}
                     style={{ "--fill": right / 100, animationDelay: `${delay}ms` } as React.CSSProperties}
                   />
                 </div>
