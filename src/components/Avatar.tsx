@@ -16,6 +16,8 @@ const RIM: Record<Corner, string> = {
 interface AvatarProps {
   name: string;
   corner?: Corner;
+  /** See-through backdrop and silhouette, so whatever is behind shows. */
+  translucent?: boolean;
   /** Show initials over the silhouette (useful at small sizes). */
   initials?: boolean;
   className?: string;
@@ -26,7 +28,13 @@ interface AvatarProps {
  * likeness). Swaps to a supplied image if AVATAR_IMAGES is populated.
  * Decorative: the fighter's name is always shown next to it.
  */
-export function Avatar({ name, corner = "neutral", initials = false, className = "" }: AvatarProps) {
+export function Avatar({
+  name,
+  corner = "neutral",
+  translucent = false,
+  initials = false,
+  className = "",
+}: AvatarProps) {
   const hash = hashName(name);
 
   if (AVATAR_IMAGES.length > 0) {
@@ -51,14 +59,22 @@ export function Avatar({ name, corner = "neutral", initials = false, className =
     : "M12 100 C 16 72, 32 65, 50 65 C 68 65, 84 72, 88 100 Z";
   const fill = "#090e17";
   const rim = RIM[corner];
+  const backdrop = translucent
+    ? corner === "red"
+      ? "linear-gradient(180deg, rgba(232,52,63,0.20) 0%, rgba(10,10,11,0.28) 100%)"
+      : "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(10,10,11,0.22) 100%)"
+    : BACKDROP[corner];
 
   return (
     <div
       aria-hidden="true"
       className={`relative overflow-hidden ${className}`}
-      style={{ background: BACKDROP[corner] }}
+      style={{ background: backdrop }}
     >
       <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMin slice">
+        {/* One group, so translucency applies to the whole figure at once and
+            overlapping shapes (neck over head) don't darken each other. */}
+        <g opacity={translucent ? 0.72 : 1}>
         {/* rim light behind the bust */}
         <ellipse cx="50" cy="46" rx="26" ry="30" fill={rim} opacity="0.12" />
         <path d={shoulders} fill={fill} stroke={rim} strokeOpacity="0.35" strokeWidth="0.8" />
@@ -75,6 +91,7 @@ export function Avatar({ name, corner = "neutral", initials = false, className =
         )}
         {hair === 5 && <path d="M34 34 C 36 20, 64 20, 66 34 L 66 30 C 60 24, 40 24, 34 30 Z" fill={fill} />}
         {beard && <path d="M36 46 C 38 62, 62 62, 64 46 C 60 54, 40 54, 36 46 Z" fill={fill} />}
+        </g>
       </svg>
       {initials && (
         <span className="absolute inset-x-0 bottom-1 text-center font-display text-[0.7em] font-semibold tracking-wide text-bone/90">
