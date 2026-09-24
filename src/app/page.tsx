@@ -39,7 +39,14 @@ export default function LandingPage() {
   return (
     <main>
       <section className="relative isolate flex min-h-[100svh] items-end overflow-hidden sm:items-center">
-        <div aria-hidden="true" className="animate-hero-drift absolute inset-0 -z-20 origin-[75%_40%]">
+        {/* The photo starts below the top of the hero (and is anchored to its own top edge), so the
+            fighter's head always clears the site bar; the crop trims the floor, never the head. */}
+        <div aria-hidden="true" className="animate-hero-drift absolute inset-x-0 top-[12svh] -bottom-[12svh] -z-20 origin-[75%_20%]"
+          style={{
+            maskImage: "linear-gradient(to bottom, transparent 0%, black 13%)",
+            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 13%)",
+          }}
+        >
           <Image
             src="/avatars/hero2.jpg"
             alt=""
@@ -47,15 +54,17 @@ export default function LandingPage() {
             priority
             quality={80}
             sizes="100vw"
-            className="object-cover object-[76%_center] sm:object-[70%_center]"
+            className="object-cover object-[76%_top] sm:object-[70%_top]"
           />
         </div>
         {/* Keep the headline readable and settle the photo into the page. */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-gradient-to-t from-canvas via-canvas/70 to-canvas/10 sm:bg-gradient-to-r sm:from-canvas sm:via-canvas/55 sm:to-transparent"
+          className="absolute inset-0 -z-10 bg-gradient-to-t from-canvas via-canvas/55 to-transparent sm:bg-gradient-to-r sm:from-canvas sm:via-canvas/55 sm:to-transparent"
         />
         <div aria-hidden="true" className="absolute inset-x-0 bottom-0 -z-10 h-1/4 bg-gradient-to-t from-canvas to-transparent" />
+        {/* Soft top edge where the photo begins. */}
+        <div aria-hidden="true" className="absolute inset-x-0 top-0 -z-10 h-[22svh] bg-gradient-to-b from-canvas via-canvas/70 to-transparent" />
 
         <div className="mx-auto w-full max-w-6xl px-4 pt-28 pb-16 lg:px-10">
           <h1 className="font-display text-7xl leading-[0.85] font-black tracking-wide uppercase sm:text-8xl lg:text-9xl">
