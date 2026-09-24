@@ -10,27 +10,27 @@ import { primaryButton } from "@/components/ui";
 const HEADLINE = ["Build the", "perfect", "fighter"];
 const FACTS = [
   "55 real fighters",
-  "8 skills, 8 picks",
-  "You never see the numbers",
-  "1 fighter, built by you",
+  "8 skills",
+  "8 picks",
   "20 fights in a row",
+  "Hidden ratings",
   "No account needed",
 ];
 
 const STEPS = [
   {
     title: "Draft",
-    body: "Pick one fighter for each of eight skills. You see names and faces, never numbers, so it comes down to what you know.",
+    body: "Pick a fighter for each of eight skills. Names only, so go with what you know.",
     names: ["Kamaru Usman", "Merab Dvalishvili", "Charles Oliveira"],
   },
   {
     title: "Reveal",
-    body: "Your fighter's overall lands, and the bars show what carried the build and what held it back.",
+    body: "See your overall rating, your best pick and your weak link.",
     names: [],
   },
   {
     title: "Rampage",
-    body: "Twenty fights in a row against fresh CPU builds. Watch each one, or sim the rest and see how far you got.",
+    body: "Take on 20 opponents in a row. Watch every fight or sim the rest.",
     names: [],
   },
 ];
@@ -76,13 +76,12 @@ export default function LandingPage() {
           </h1>
 
           <p className="animate-rise-in mt-6 max-w-md text-lg text-bone/85" style={{ animationDelay: "520ms" }}>
-            Pick one fighter for each skill, without seeing their numbers. Then find out how
-            good the fighter you built really is, and put them through twenty fights.
+            Draft eight fighters into one. See what you built. Then take on twenty in a row.
           </p>
 
           <div className="animate-rise-in mt-8" style={{ animationDelay: "680ms" }}>
             <Link href="/draft" className={`${primaryButton} inline-flex`}>
-              Build my fighter
+              Build your fighter
             </Link>
           </div>
         </div>
@@ -104,13 +103,11 @@ export default function LandingPage() {
         <div className="grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
           <div>
             <h2 className="font-display text-6xl leading-[0.88] font-black tracking-wide uppercase sm:text-7xl">
-              Every fight
-              <br />
-              is different
+              Fight night
             </h2>
             <p className="mt-4 max-w-md text-chalk">
-              This is the real engine, running in your browser right now. Same fighter, a fresh
-              opponent each time, and no two fights end the same way.
+              Chiamaka, {computeOverall(DEMO_SELECTIONS)} overall, takes on a new CPU every fight.
+              Build yours and see how it does.
             </p>
           </div>
           <LiveFight />
@@ -121,9 +118,7 @@ export default function LandingPage() {
       <section className="bg-paper text-ink">
         <div className="mx-auto max-w-6xl px-4 py-20 lg:px-10">
           <h2 className="font-display text-6xl leading-[0.88] font-black tracking-wide uppercase sm:text-7xl">
-            Three steps.
-            <br />
-            One fighter.
+            How it works
           </h2>
           <ol className="mt-12 grid gap-10 md:grid-cols-3 md:gap-8">
             {STEPS.map((step, index) => (
@@ -172,18 +167,17 @@ export default function LandingPage() {
 
       <section className="mx-auto max-w-4xl px-4 py-20 lg:px-10">
         <h2 className="font-display text-5xl leading-[0.9] font-black tracking-wide uppercase sm:text-6xl">
-          Meet what you&rsquo;ll build
+          The reveal
         </h2>
         <p className="mt-3 mb-8 max-w-lg text-chalk">
-          Eight picks, one fighter. When the draft ends you see how strong the whole is, and
-          which pick carried it and which held it back.
+          Every build ends with an overall rating, a best pick and a weak link.
         </p>
         <LandingDemo name="Chiamaka" selections={DEMO_SELECTIONS} overall={computeOverall(DEMO_SELECTIONS)} />
       </section>
 
       <footer className="border-t border-line px-4 py-8 text-center text-xs text-chalk-faint">
-        Five-Star MMA is an independent fan project. It is not affiliated with or endorsed by the UFC,
-        any promotion, or any fighter.
+        Five-Star MMA is an independent fan project. Not affiliated with or endorsed by the UFC,
+        any promotion or any fighter.
       </footer>
     </main>
   );

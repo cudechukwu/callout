@@ -19,7 +19,7 @@ const plexSans = IBM_Plex_Sans({
 
 export const metadata: Metadata = {
   title: "Five-Star MMA",
-  description: "Build the perfect fighter. Put your build through the gauntlet.",
+  description: "Draft eight fighters into one. See what you built. Then take on twenty in a row.",
 };
 
 export default function RootLayout({

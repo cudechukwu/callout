@@ -60,6 +60,7 @@ export function LiveFight() {
   const rngRef = useRef<RNG | null>(null);
   const [fight, setFight] = useState<Fight | null>(null);
   const [shown, setShown] = useState(0);
+  const [fightNumber, setFightNumber] = useState(1);
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
@@ -80,6 +81,7 @@ export function LiveFight() {
     }
     const t = window.setTimeout(() => {
       setFight(buildFight(rngRef.current!));
+      setFightNumber((n) => n + 1);
       setShown(0);
     }, HOLD_MS);
     return () => window.clearTimeout(t);
@@ -97,9 +99,9 @@ export function LiveFight() {
       <div className="flex items-center justify-between border-b border-line px-5 py-3">
         <p className="flex items-center gap-2 text-sm font-semibold text-bone">
           <span className="animate-live-dot h-2 w-2 rounded-full bg-corner-red" aria-hidden="true" />
-          Live simulation
+          Live now
         </p>
-        <p className="hidden text-xs text-chalk sm:block">Running the real engine in your browser</p>
+        <p className="text-xs text-chalk">Fight {fightNumber}</p>
       </div>
 
       <div className="px-5 pt-4">
