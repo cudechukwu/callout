@@ -1,6 +1,6 @@
 # Balance Report — Simulation Engine v0.1
 
-**Status:** In progress. Documents the first harness-driven tuning pass.
+**Status:** v0.1 balance adopted (see "Adopted tuning") and **frozen pending human playtesting.** Do not rebalance from synthetic tests alone; change it only when a playtest observation produces a specific hypothesis. Sections before "Adopted tuning" are a chronological log measured under earlier versions of the engine.
 **Tool:** `npm run balance:report [iterations]` (default 20,000/matchup)
 **Test coverage:** `src/lib/simulation/invariants.test.ts` (regression guards, 3,000/matchup)
 
@@ -352,6 +352,20 @@ Before (flat .08): 98-99 builds won ~68% (13.5 wins), 20-0 ~0.02%. **Target was 
 **OVR refit:** ten-rating fit R^2 rose 0.79 -> **0.90** (held-out 0.897; plain average of the 8 visible ratings 0.74) — ratings now explain far more of the outcome. Scale re-anchored so the best draft from the whole pool is ~98. Drafters who can see every rating: ~92 median, 95+ about a quarter of the time (hidden-rating players will be well below that). Random drafting centers on ~71.
 
 **Known trade-offs:** specialists now beat balanced builds more decisively (Striker vs Balanced 78%); initiative sensitivity also raises Fight IQ and cardio value (both feed initiative); neutral fights are ~2 points more decision-heavy.
+
+---
+
+## Style interaction at matched OVR (finding for future Rampage/gauntlet design)
+
+Question: does the engine have counter-play, i.e. do some builds systematically beat others regardless of overall strength? 40 drafted builds each of three styles (strikers, grapplers, mixed), all in OVR 80-86 (means 83.1 / 82.8 / 82.8), fought each other 6x per pairing:
+
+| Player \ Opponent | Striker | Grappler | Mixed |
+|---|---|---|---|
+| Striker | 50% | 51% | 51% |
+| Grappler | 50% | 50% | 51% |
+| Mixed | 49% | 50% | 51% |
+
+**At equal OVR, style makes essentially no difference (49-51%).** This is the other side of the OVR refit result (R^2 0.90): overall strength explains almost all of the outcome, so a specialist opponent behaves like a generic opponent of its OVR. Consistent with an earlier unmatched test (specialists built with deliberate weak spots lose to complete builds purely in OVR order: 92 > 76 > 60). The archetype fixtures do show style effects (e.g. Elite Striker vs Elite Wrestler 42%), but drafted builds sit in a narrow rating band (4-5 of 5), so style gaps between them are tiny. **Implication:** a curated "archetype gauntlet" whose fights are meant to test different weaknesses would collapse into "20 opponents of varying OVR" unless the engine first gains real style interaction. A cheap, measurable acceptance test for that work: this matched-OVR matrix should move well away from 50% (e.g. 35-65%) without hurting the top-end numbers above.
 
 ---
 
