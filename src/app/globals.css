@@ -247,3 +247,14 @@ body::after {
   .animate-line-up, .animate-screen-in { opacity: 1; transform: none; }
   .animate-marquee { animation: none; }
 }
+
+/* Slow push-in on the hero photo: it should never sit perfectly still. */
+@keyframes hero-drift {
+  from { transform: scale(1.02) translateX(0); }
+  to   { transform: scale(1.09) translateX(-1.5%); }
+}
+.animate-hero-drift { animation: hero-drift 26s ease-in-out infinite alternate; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hero-drift { animation: none; }
+}

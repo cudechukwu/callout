@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { LandingDemo } from "@/components/LandingDemo";
@@ -37,47 +38,45 @@ const STEPS = [
 export default function LandingPage() {
   return (
     <main>
-      <section className="relative isolate flex min-h-[100svh] items-center overflow-hidden">
-        {/* Arena light and a red slash, all drawn: no photo, nothing to license. */}
-        <div aria-hidden="true" className="absolute inset-0 -z-10">
-          <div
-            className="animate-spot-sway absolute -top-24 left-[58%] h-[130%] w-[90%] -translate-x-1/2"
-            style={{
-              background:
-                "conic-gradient(from 168deg at 50% 0%, transparent 0deg, rgba(255,255,255,0.13) 10deg, transparent 22deg, transparent 36deg, rgba(255,255,255,0.09) 46deg, transparent 58deg)",
-              maskImage: "linear-gradient(to bottom, black 20%, transparent 90%)",
-            }}
+      <section className="relative isolate flex min-h-[100svh] items-end overflow-hidden sm:items-center">
+        <div aria-hidden="true" className="animate-hero-drift absolute inset-0 -z-20 origin-[75%_40%]">
+          <Image
+            src="/avatars/hero2.jpg"
+            alt=""
+            fill
+            priority
+            quality={80}
+            sizes="100vw"
+            className="object-cover object-[76%_center] sm:object-[70%_center]"
           />
-          <div className="absolute top-0 -right-24 h-full w-[46%] skew-x-[-14deg] bg-gradient-to-b from-corner-red/30 via-corner-red/10 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-canvas to-transparent" />
         </div>
+        {/* Keep the headline readable and settle the photo into the page. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 bg-gradient-to-t from-canvas via-canvas/70 to-canvas/10 sm:bg-gradient-to-r sm:from-canvas sm:via-canvas/55 sm:to-transparent"
+        />
+        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 -z-10 h-1/4 bg-gradient-to-t from-canvas to-transparent" />
 
-        <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 pt-24 pb-16 lg:grid-cols-[1.05fr_1fr] lg:gap-12 lg:px-10">
-          <div>
-            <h1 className="font-display text-7xl leading-[0.85] font-black tracking-wide uppercase sm:text-8xl lg:text-9xl">
-              {HEADLINE.map((line, index) => (
-                <span key={line} className="block overflow-hidden pb-[0.06em]">
-                  <span className="animate-line-up block" style={{ animationDelay: `${index * 110}ms` }}>
-                    {line}
-                  </span>
+        <div className="mx-auto w-full max-w-6xl px-4 pt-28 pb-16 lg:px-10">
+          <h1 className="font-display text-7xl leading-[0.85] font-black tracking-wide uppercase sm:text-8xl lg:text-9xl">
+            {HEADLINE.map((line, index) => (
+              <span key={line} className="block overflow-hidden pb-[0.06em]">
+                <span className="animate-line-up block" style={{ animationDelay: `${index * 110}ms` }}>
+                  {line}
                 </span>
-              ))}
-            </h1>
+              </span>
+            ))}
+          </h1>
 
-            <p className="animate-rise-in mt-6 max-w-md text-lg text-bone/80" style={{ animationDelay: "520ms" }}>
-              Pick one fighter for each skill, without seeing their numbers. Then find out how
-              good the fighter you built really is, and put them through twenty fights.
-            </p>
+          <p className="animate-rise-in mt-6 max-w-md text-lg text-bone/85" style={{ animationDelay: "520ms" }}>
+            Pick one fighter for each skill, without seeing their numbers. Then find out how
+            good the fighter you built really is, and put them through twenty fights.
+          </p>
 
-            <div className="animate-rise-in mt-8" style={{ animationDelay: "680ms" }}>
-              <Link href="/draft" className={`${primaryButton} inline-flex`}>
-                Build my fighter
-              </Link>
-            </div>
-          </div>
-
-          <div className="animate-rise-in" style={{ animationDelay: "420ms" }}>
-            <LiveFight />
+          <div className="animate-rise-in mt-8" style={{ animationDelay: "680ms" }}>
+            <Link href="/draft" className={`${primaryButton} inline-flex`}>
+              Build my fighter
+            </Link>
           </div>
         </div>
       </section>
@@ -93,6 +92,23 @@ export default function LandingPage() {
           ))}
         </div>
       </div>
+
+      <section className="mx-auto max-w-6xl px-4 py-20 lg:px-10">
+        <div className="grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
+          <div>
+            <h2 className="font-display text-6xl leading-[0.88] font-black tracking-wide uppercase sm:text-7xl">
+              Every fight
+              <br />
+              is different
+            </h2>
+            <p className="mt-4 max-w-md text-chalk">
+              This is the real engine, running in your browser right now. Same fighter, a fresh
+              opponent each time, and no two fights end the same way.
+            </p>
+          </div>
+          <LiveFight />
+        </div>
+      </section>
 
       {/* Light band: the dark brand needs somewhere to breathe. */}
       <section className="bg-paper text-ink">
