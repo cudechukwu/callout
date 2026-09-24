@@ -1,0 +1,298 @@
+// Five-Star MMA — database schema.
+//
+// This is the corrected version of the schema sketched in
+// DESIGN_FINAL.md, after several rounds of review found real errors in
+// the original hand-written SQL: inline INDEX(...) inside CREATE TABLE
+// (invalid Postgres syntax — Prisma's schema DSL makes this whole class
+// of bug structurally impossible, since @@index is always a separate
+// declaration), a WHERE active = true index referencing a column that
+// didn't exist, DECIMAL(3,1) used for values that can exceed 100.0,
+// missing timezone-aware timestamps, and a hard 500-2000 Elo range that
+// would silently corrupt data the moment a real season produced a
+// rating outside it. Fixed throughout below.
+//
+// See LOCKED_DECISIONS.md for the architectural decisions this encodes
+// (fighter immutability, ranked-vs-challenge fights, deterministic
+// replay via seed + snapshot + engine version, idempotent fight writes).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AuthProvider {
+  GOOGLE
+  APPLE
+  EMAIL
+
+  @@map("auth_provider")
+}
+
+enum VisibleAttribute {
+  WRESTLING
+  SUBMISSIONS
+  BOXING
+  KICKBOXING
+  POWER
+  CARDIO
+  CHIN
+  FIGHT_IQ
+
+  @@map("visible_attribute")
+}
+
+enum FightMethod {
+  KO
+  TKO
+  SUB
+  DEC
+
+  @@map("fight_method")
+}
+
+/// Per LOCKED_DECISIONS.md — a fighter's lifecycle state. ACTIVE fighters
+/// can be challenged/matched; RETIRED ones are read-only (the player
+/// chose to archive them, e.g. to build a new fighter after their build
+/// locked); BANNED is a moderation action.
+enum FighterStatus {
+  ACTIVE
+  RETIRED
+  BANNED
+
+  @@map("fighter_status")
+}
+
+model User {
+  id           String       @id @default(uuid()) @db.Uuid
+  email        String       @unique
+  username     String       @unique
+  authProvider AuthProvider @map("auth_provider")
+  createdAt    DateTime     @default(now()) @db.Timestamptz @map("created_at")
+
+  fighters Fighter[]
+
+  @@map("users")
+}
+
+model Fighter {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Non-unique, can contain spaces/mixed case — corrected from an
+  /// earlier draft that conflated this with `handle`. See
+  /// DESIGN_CORRECTIONS.md > Naming Rules.
+  displayName String @map("display_name")
+  /// URL-safe, globally unique, immutable — this is what appears in
+  /// challenge links (fivestarmma.com/f/{handle}).
+  handle      String @unique
+
+  /// Elo rating. Deliberately no CHECK constraint bounding this to a
+  /// fixed range (an earlier draft used 500-2000) — a real rating
+  /// distribution can legitimately drift outside any range picked in
+  /// advance, and a hard constraint would turn normal gameplay into a
+  /// failed write instead of just an unusual-but-valid number.
+  elo Int @default(1000)
+
+  wins           Int @default(0)
+  losses         Int @default(0)
+  koWins         Int @default(0) @map("ko_wins")
+  submissionWins Int @default(0) @map("submission_wins")
+  decisionWins   Int @default(0) @map("decision_wins")
+  currentStreak  Int @default(0) @map("current_streak")
+  bestStreak     Int @default(0) @map("best_streak")
+  fightsCount    Int @default(0) @map("fights_count")
+
+  status FighterStatus @default(ACTIVE)
+
+  /// Null until this fighter's first RANKED fight; once set, the 8
+  /// selections below are immutable at the application layer (Prisma/
+  /// Postgres can't express "these rows become read-only after some
+  /// event" as a constraint — this must be enforced in the API).
+  /// See LOCKED_DECISIONS.md > Decision 5.
+  lockedAt DateTime? @db.Timestamptz @map("locked_at")
+
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+  /// @updatedAt makes Prisma set this on every write automatically —
+  /// an earlier hand-written schema had the equivalent of DEFAULT
+  /// CURRENT_TIMESTAMP on this column, which does NOT auto-update on
+  /// UPDATE in Postgres without a trigger. This attribute is that fix.
+  updatedAt DateTime @updatedAt @db.Timestamptz @map("updated_at")
+
+  selections FighterSelection[]
+  fightsAsA  Fight[]            @relation("FighterA")
+  fightsAsB  Fight[]            @relation("FighterB")
+  fightsWon  Fight[]            @relation("Winner")
+
+  @@index([elo])
+  @@map("fighters")
+}
+
+/// The 317-fighter roster from fighter_data.csv. `active` gates whether
+/// a fighter can appear in draft pool generation (see
+/// src/lib/draft/draftPool.ts) without deleting historical data that
+/// past fighter_selections / fight snapshots still reference.
+model SourceFighter {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  wrestling   Float
+  submissions Float
+  boxing      Float
+  kickboxing  Float
+  defense     Float
+  cardio      Float
+  power       Float
+  chin        Float
+  fightIq     Float    @map("fight_iq")
+  speed       Float
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz @map("created_at")
+
+  selections FighterSelection[]
+
+  @@index([active])
+  @@map("source_fighters")
+}
+
+/// A fighter's current 8 attribute picks. Distinct from Fight's frozen
+/// JSONB snapshots below: this table is the LIVE, editable state of a
+/// not-yet-locked fighter (or the current state of a locked one);
+/// fight snapshots are immutable copies taken at fight time so replay
+/// never depends on this table's current contents.
+model FighterSelection {
+  id        String  @id @default(uuid()) @db.Uuid
+  fighterId String  @map("fighter_id") @db.Uuid
+  fighter   Fighter @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+
+  attribute VisibleAttribute
+
+  sourceFighterId Int           @map("source_fighter_id")
+  sourceFighter   SourceFighter @relation(fields: [sourceFighterId], references: [id])
+  /// Denormalized for display without a join. Deliberate, not an
+  /// oversight: the canonical value is always sourceFighter.name — this
+  /// column exists purely so a fighter card can render without joining
+  /// source_fighters on every read. It can only drift if a source
+  /// fighter is renamed post-launch, which should never happen.
+  sourceFighterName String @map("source_fighter_name")
+  ratingAtSelection Float  @map("rating_at_selection")
+
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+
+  @@unique([fighterId, attribute])
+  @@map("fighter_selections")
+}
+
+model Fight {
+  id String @id @default(uuid()) @db.Uuid
+
+  fighterAId String  @map("fighter_a_id") @db.Uuid
+  fighterA   Fighter @relation("FighterA", fields: [fighterAId], references: [id])
+  fighterBId String  @map("fighter_b_id") @db.Uuid
+  fighterB   Fighter @relation("FighterB", fields: [fighterBId], references: [id])
+  winnerId   String  @map("winner_id") @db.Uuid
+  winner     Fighter @relation("Winner", fields: [winnerId], references: [id])
+
+  /// Frozen at fight time — see DESIGN_FINAL.md > Deterministic Replay.
+  /// Each snapshot mirrors FighterSnapshot["selections"] from
+  /// src/lib/simulation/types.ts exactly (all 8 picks, each with the
+  /// COMPLETE SourceFighter row, not just an id) so a fight replays
+  /// bit-for-bit regardless of later changes to source_fighters or to
+  /// this fighter's live FighterSelection rows.
+  fighterASnapshot Json @map("fighter_a_snapshot")
+  fighterBSnapshot Json @map("fighter_b_snapshot")
+
+  /// Seeds a deterministic PRNG (seedrandom) — same seed + same two
+  /// snapshots + same engineVersion always reproduces this exact fight.
+  seed               BigInt
+  engineVersion      String @map("engine_version")
+  fighterDataVersion String @map("fighter_data_version")
+
+  method            FightMethod
+  round             Int
+  roundTimeSeconds  Int         @map("round_time_seconds")
+
+  fighterAEloBefore Int @map("fighter_a_elo_before")
+  fighterBEloBefore Int @map("fighter_b_elo_before")
+  fighterAEloAfter  Int @map("fighter_a_elo_after")
+  fighterBEloAfter  Int @map("fighter_b_elo_after")
+
+  /// See LOCKED_DECISIONS.md > Decision 4: ranked fights are server-
+  /// matchmade and always affect Elo; challenge fights are peer-
+  /// initiated, unlimited, and do NOT affect Elo in v1. This flag is
+  /// what the Elo-update logic checks before touching either fighter's
+  /// rating.
+  isRanked Boolean @default(true) @map("is_ranked")
+
+  /// Prevents a retried/duplicated fight-creation request (e.g. a
+  /// client network timeout + retry) from being applied twice. See
+  /// LOCKED_DECISIONS.md > Decision 9.
+  idempotencyKey String @unique @map("idempotency_key")
+
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+
+  events FightEvent[]
+  stats  FightStat[]
+
+  @@index([fighterAId, createdAt])
+  @@index([fighterBId, createdAt])
+  @@index([createdAt])
+  @@map("fights")
+}
+
+/// Mirrors SimulationEvent from src/lib/simulation/types.ts — the full
+/// per-exchange event log, kept for fight replay/broadcast rendering.
+/// `type` and `metadata` stay loosely typed here (matching the engine's
+/// own SimulationEvent.type: string) rather than an enum, since the
+/// event vocabulary is still evolving — see engine.ts's review notes on
+/// eventually moving to a discriminated union.
+model FightEvent {
+  id     String @id @default(uuid()) @db.Uuid
+  fightId String @map("fight_id") @db.Uuid
+  fight   Fight  @relation(fields: [fightId], references: [id], onDelete: Cascade)
+
+  sequence         Int
+  round            Int
+  fightTimeSeconds Int    @map("fight_time_seconds")
+  type             String
+  actorId          String @map("actor_id") @db.Uuid
+  targetId         String @map("target_id") @db.Uuid
+  metadata         Json?
+
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+
+  @@index([fightId, sequence])
+  @@map("fight_events")
+}
+
+/// Box-score summary per fighter per fight. Mirrors FighterFightStats
+/// from src/lib/simulation/types.ts.
+model FightStat {
+  id       String @id @default(uuid()) @db.Uuid
+  fightId  String @map("fight_id") @db.Uuid
+  fight    Fight  @relation(fields: [fightId], references: [id], onDelete: Cascade)
+  fighterId String @map("fighter_id") @db.Uuid
+
+  significantStrikesAttempted Int   @default(0) @map("significant_strikes_attempted")
+  significantStrikesLanded    Int   @default(0) @map("significant_strikes_landed")
+  takedownsAttempted          Int   @default(0) @map("takedowns_attempted")
+  takedownsLanded             Int   @default(0) @map("takedowns_landed")
+  controlSeconds              Float @default(0) @map("control_seconds")
+  submissionAttempts          Int   @default(0) @map("submission_attempts")
+
+  /// Cumulative, UNBOUNDED sums — not the same as the clamped 0-100
+  /// DamageState the engine tracks live during simulation. Diagnostic
+  /// only right now (decision scoring doesn't read these yet); if that
+  /// changes, use "effective damage applied," not this raw sum — see
+  /// the caveat on FighterFightStats in src/lib/simulation/types.ts and
+  /// BALANCE_REPORT.md > Fix 5.
+  headDamageDealt Float @default(0) @map("head_damage_dealt")
+  bodyDamageDealt Float @default(0) @map("body_damage_dealt")
+  legDamageDealt  Float @default(0) @map("leg_damage_dealt")
+
+  @@unique([fightId, fighterId])
+  @@map("fight_stats")
+}
