@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Big_Shoulders, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
+import { TopBar } from "@/components/TopBar";
 
 const bigShoulders = Big_Shoulders({
   subsets: ["latin"],
@@ -28,7 +29,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${bigShoulders.variable} ${plexSans.variable}`}>
-      <body>{children}</body>
+      <body>
+        <TopBar />
+        {children}
+      </body>
     </html>
   );
 }

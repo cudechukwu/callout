@@ -21,7 +21,7 @@ export function DraftScreen({ state, pendingId, onPick, onReroll }: DraftScreenP
   const busy = pendingId !== null;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 pt-6 pb-6">
+    <main className="mx-auto flex min-h-[calc(100svh-3.5rem)] w-full max-w-5xl flex-col px-4 pt-6 pb-6">
       <div className="flex items-center justify-between text-sm text-chalk">
         <p>
           Pick {state.roundIndex + 1} of {total}

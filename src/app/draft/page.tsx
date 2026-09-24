@@ -25,6 +25,7 @@ import { RampageSummary } from "@/components/RampageSummary";
 import { RunHud } from "@/components/RunHud";
 import { TaleOfTape } from "@/components/TaleOfTape";
 import { primaryButton, secondaryButton } from "@/components/ui";
+import { isRunActive, setRunActive } from "@/lib/runGuard";
 
 type Phase =
   | "drafting"
@@ -81,6 +82,24 @@ export default function DraftPage() {
     () => (opponent ? computeOverall(opponent.selections) : 0),
     [opponent]
   );
+
+  // A run counts as in progress once a pick is made or a fight is fought.
+  // Leaving then loses the fighter and record (nothing is saved yet), so
+  // the top bar and the browser both ask first.
+  const runInProgress =
+    state !== null && (state.roundIndex > 0 || phase !== "drafting" || history.length > 0);
+  useEffect(() => {
+    setRunActive(runInProgress);
+    if (!runInProgress) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!isRunActive()) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [runInProgress]);
+  useEffect(() => () => setRunActive(false), []);
 
   useEffect(() => {
     rngRef.current = createRng(Math.floor(Math.random() * 2 ** 31));
@@ -197,7 +216,7 @@ export default function DraftPage() {
 
   if (phase === "naming") {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-10">
+      <main className="mx-auto flex min-h-[calc(100svh-3.5rem)] w-full max-w-md flex-col justify-center px-4 py-10">
         <div className="animate-rise-in">
           <p className="text-chalk">Draft complete</p>
           <h1 className="mt-1 font-display text-6xl leading-[0.9] font-black tracking-wide uppercase">
@@ -244,7 +263,7 @@ export default function DraftPage() {
     // on mount — also what the server renders, so the first client paint
     // matches it exactly (no hydration mismatch).
     return (
-      <main className="flex min-h-screen items-center justify-center px-6">
+      <main className="flex min-h-[calc(100svh-3.5rem)] items-center justify-center px-6">
         <p className="text-chalk">Setting up the draft…</p>
       </main>
     );
