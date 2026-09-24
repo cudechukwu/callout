@@ -1,13 +1,11 @@
-import Image from "next/image";
-import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
+import { HeroBackdrop } from "@/components/HeroBackdrop";
+import { HeroLockup } from "@/components/HeroLockup";
 import { LandingDemo } from "@/components/LandingDemo";
 import { LiveFight } from "@/components/LiveFight";
 import { DEMO_SELECTIONS } from "@/lib/data/demoFighter";
 import { computeOverall } from "@/lib/draft/overall";
-import { primaryButton } from "@/components/ui";
 
-const HEADLINE = ["Build the", "perfect", "fighter"];
 const FACTS = [
   "55 real fighters",
   "8 skills",
@@ -38,52 +36,10 @@ const STEPS = [
 export default function LandingPage() {
   return (
     <main>
-      <section className="relative isolate flex min-h-[100svh] items-end overflow-hidden sm:items-center">
-        {/* The photo starts below the top of the hero (and is anchored to its own top edge), so the
-            fighter's head always clears the site bar; the crop trims the floor, never the head. */}
-        <div aria-hidden="true" className="animate-hero-drift absolute inset-x-0 top-[12svh] -bottom-[12svh] -z-20 origin-[75%_20%]"
-          style={{
-            maskImage: "linear-gradient(to bottom, transparent 0%, black 7%)",
-            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 7%)",
-          }}
-        >
-          <Image
-            src="/avatars/hero2.jpg"
-            alt=""
-            fill
-            priority
-            quality={80}
-            sizes="100vw"
-            className="object-cover object-[76%_top] brightness-[1.12] sm:object-[70%_top]"
-          />
-        </div>
-        {/* Keep the headline readable and settle the photo into the page. */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-gradient-to-t from-canvas via-canvas/55 to-transparent sm:bg-gradient-to-r sm:from-canvas sm:via-canvas/55 sm:to-transparent"
-        />
-        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 -z-10 h-1/4 bg-gradient-to-t from-canvas to-transparent" />
-
-        <div className="mx-auto w-full max-w-6xl px-4 pt-28 pb-16 lg:px-10">
-          <h1 className="font-display text-7xl leading-[0.85] font-black tracking-wide uppercase sm:text-8xl lg:text-9xl">
-            {HEADLINE.map((line, index) => (
-              <span key={line} className="block overflow-hidden pb-[0.06em]">
-                <span className="animate-line-up block" style={{ animationDelay: `${index * 110}ms` }}>
-                  {line}
-                </span>
-              </span>
-            ))}
-          </h1>
-
-          <p className="animate-rise-in mt-6 max-w-md text-lg text-bone/85" style={{ animationDelay: "520ms" }}>
-            Draft eight fighters into one. See what you built. Then take on twenty in a row.
-          </p>
-
-          <div className="animate-rise-in mt-8" style={{ animationDelay: "680ms" }}>
-            <Link href="/draft" className={`${primaryButton} inline-flex`}>
-              Build your fighter
-            </Link>
-          </div>
+      <section className="relative isolate flex min-h-[100svh] items-end overflow-hidden">
+        <HeroBackdrop />
+        <div className="mx-auto w-full max-w-6xl px-4 pt-28 pb-14 lg:px-10 lg:pb-16">
+          <HeroLockup />
         </div>
       </section>
 
@@ -115,7 +71,7 @@ export default function LandingPage() {
       </section>
 
       {/* Light band: the dark brand needs somewhere to breathe. */}
-      <section className="bg-paper text-ink">
+      <section id="how" className="bg-paper text-ink">
         <div className="mx-auto max-w-6xl px-4 py-20 lg:px-10">
           <h2 className="font-display text-6xl leading-[0.88] font-black tracking-wide uppercase sm:text-7xl">
             How it works
