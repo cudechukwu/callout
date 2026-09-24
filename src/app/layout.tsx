@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Barlow_Condensed, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Big_Shoulders, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 
-const barlowCondensed = Barlow_Condensed({
+const bigShoulders = Big_Shoulders({
   subsets: ["latin"],
-  weight: ["500", "600", "700", "900"],
+  weight: ["600", "700", "800", "900"],
   variable: "--font-display",
   display: "swap",
 });
@@ -13,13 +13,6 @@ const plexSans = IBM_Plex_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   variable: "--font-body",
-  display: "swap",
-});
-
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-mono",
   display: "swap",
 });
 
@@ -34,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${barlowCondensed.variable} ${plexSans.variable} ${plexMono.variable}`}>
+    <html lang="en" className={`${bigShoulders.variable} ${plexSans.variable}`}>
       <body>{children}</body>
     </html>
   );

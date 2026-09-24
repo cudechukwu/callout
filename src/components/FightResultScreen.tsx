@@ -1,4 +1,6 @@
 import type { FightResult } from "@/lib/simulation/types";
+import { Avatar } from "@/components/Avatar";
+import { formatClock, primaryButton, secondaryButton } from "@/components/ui";
 
 const METHOD_LABELS: Record<FightResult["method"], string> = {
   KO: "Knockout",
@@ -21,8 +23,6 @@ interface FightResultScreenProps {
   playerName: string;
   opponentId: string;
   opponentName: string;
-  /** Career record including this fight. */
-  record: { wins: number; losses: number };
   /** Present only during a rampage — replaces the rematch button with
    * next-fight / sim-the-rest / final-results controls. */
   rampage?: RampageProgress;
@@ -34,16 +34,31 @@ function StatRow({
   label,
   playerValue,
   opponentValue,
+  playerNumber,
+  opponentNumber,
 }: {
   label: string;
   playerValue: string;
   opponentValue: string;
+  playerNumber: number;
+  opponentNumber: number;
 }) {
+  const total = playerNumber + opponentNumber || 1;
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border py-2.5 last:border-b-0">
-      <span className="font-mono text-sm tabular-nums text-text">{playerValue}</span>
-      <span className="text-center text-xs text-text-faint uppercase">{label}</span>
-      <span className="text-right font-mono text-sm tabular-nums text-text">{opponentValue}</span>
+    <div className="py-2.5">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-baseline gap-3">
+        <span className="font-numeric text-2xl leading-none font-bold text-bone">{playerValue}</span>
+        <span className="text-center text-sm text-chalk">{label}</span>
+        <span className="text-right font-numeric text-2xl leading-none font-bold text-bone">{opponentValue}</span>
+      </div>
+      <div className="mt-1.5 flex h-1.5 gap-[3px]" aria-hidden="true">
+        <div className="flex justify-end bg-line" style={{ width: "50%" }}>
+          <div className="h-full bg-corner-red" style={{ width: `${(playerNumber / total) * 100}%` }} />
+        </div>
+        <div className="bg-line" style={{ width: "50%" }}>
+          <div className="h-full bg-corner-blue" style={{ width: `${(opponentNumber / total) * 100}%` }} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -54,100 +69,101 @@ export function FightResultScreen({
   playerName,
   opponentId,
   opponentName,
-  record,
   rampage,
   onRematch,
   onNewFighter,
 }: FightResultScreenProps) {
   const won = result.winnerId === playerId;
-  const playerStats = result.stats[playerId]!;
-  const opponentStats = result.stats[opponentId]!;
+  const me = result.stats[playerId]!;
+  const them = result.stats[opponentId]!;
+  const winnerName = won ? playerName : opponentName;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-      <div className="flex items-baseline justify-between">
+    <main className="mx-auto w-full max-w-3xl px-4 py-8">
+      <section
+        className={`cut animate-rise-in relative overflow-hidden px-6 py-8 sm:px-10 ${won ? "bg-corner-red" : "bg-panel-raised"}`}
+      >
+        <div aria-hidden="true" className="absolute inset-y-0 right-0 hidden w-52 sm:block">
+          <Avatar name={winnerName} corner={won ? "red" : "blue"} className="h-full w-full opacity-90" />
+        </div>
         <p
-          className={`font-display text-2xl font-black tracking-tight uppercase ${
-            won ? "text-accent" : "text-text-muted"
+          className={`font-display text-8xl leading-[0.85] font-black tracking-wide uppercase sm:text-9xl ${
+            won ? "text-bone" : "text-chalk"
           }`}
         >
-          {won ? "Victory" : "Defeat"}
+          {won ? "Win" : "Loss"}
         </p>
-        <p className="font-mono text-sm text-text-muted">
-          {rampage && `Fight ${rampage.fightNumber}/${rampage.total} · `}
-          {record.wins}–{record.losses}
+        <p className="mt-3 font-display text-3xl font-extrabold tracking-wide text-bone uppercase sm:text-4xl">
+          {METHOD_LABELS[result.method]}
+          {result.method !== "DEC" && (
+            <span className="ml-3 text-bone/80">
+              Round {result.round}, {formatClock(result.roundTimeSeconds)}
+            </span>
+          )}
         </p>
-      </div>
-      <h1 className="mt-1 font-display text-4xl font-black tracking-tight uppercase">
-        {METHOD_LABELS[result.method]}
-        {result.method !== "DEC" &&
-          ` — Round ${result.round} · ${formatControlTime(result.roundTimeSeconds)}`}
-      </h1>
+        <p className={`mt-1 text-sm ${won ? "text-bone/85" : "text-chalk"}`}>
+          {winnerName} takes it
+          {result.method === "DEC" ? " on the scorecards." : "."}
+        </p>
+      </section>
 
-      <div className="mt-8 border border-border bg-surface px-5 py-4">
-        <div className="mb-1 flex items-center justify-between">
-          <span className="font-medium text-text">{playerName}</span>
-          <span className="font-medium text-text">{opponentName}</span>
+      <section className="cut mt-4 bg-panel px-5 py-4 sm:px-8" aria-label="Fight stats">
+        <div className="mb-1 flex justify-between border-b border-line pb-2">
+          <span className="font-display text-lg font-extrabold tracking-wide uppercase">{playerName}</span>
+          <span className="font-display text-lg font-extrabold tracking-wide uppercase">{opponentName}</span>
         </div>
         <StatRow
-          label="Sig. strikes"
-          playerValue={`${playerStats.significantStrikesLanded}/${playerStats.significantStrikesAttempted}`}
-          opponentValue={`${opponentStats.significantStrikesLanded}/${opponentStats.significantStrikesAttempted}`}
+          label="Significant strikes"
+          playerValue={`${me.significantStrikesLanded}/${me.significantStrikesAttempted}`}
+          opponentValue={`${them.significantStrikesLanded}/${them.significantStrikesAttempted}`}
+          playerNumber={me.significantStrikesLanded}
+          opponentNumber={them.significantStrikesLanded}
         />
         <StatRow
           label="Takedowns"
-          playerValue={`${playerStats.takedownsLanded}/${playerStats.takedownsAttempted}`}
-          opponentValue={`${opponentStats.takedownsLanded}/${opponentStats.takedownsAttempted}`}
+          playerValue={`${me.takedownsLanded}/${me.takedownsAttempted}`}
+          opponentValue={`${them.takedownsLanded}/${them.takedownsAttempted}`}
+          playerNumber={me.takedownsLanded}
+          opponentNumber={them.takedownsLanded}
         />
         <StatRow
-          label="Control"
-          playerValue={formatControlTime(playerStats.controlSeconds)}
-          opponentValue={formatControlTime(opponentStats.controlSeconds)}
+          label="Control time"
+          playerValue={formatClock(me.controlSeconds)}
+          opponentValue={formatClock(them.controlSeconds)}
+          playerNumber={me.controlSeconds}
+          opponentNumber={them.controlSeconds}
         />
         <StatRow
-          label="Sub. attempts"
-          playerValue={String(playerStats.submissionAttempts)}
-          opponentValue={String(opponentStats.submissionAttempts)}
+          label="Submission attempts"
+          playerValue={String(me.submissionAttempts)}
+          opponentValue={String(them.submissionAttempts)}
+          playerNumber={me.submissionAttempts}
+          opponentNumber={them.submissionAttempts}
         />
-      </div>
+      </section>
 
-      <div className="mt-8 flex flex-col gap-3">
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
         {rampage ? (
           rampage.fightNumber < rampage.total ? (
             <>
-              <button
-                onClick={rampage.onNext}
-                className="bg-accent px-8 py-4 font-display text-lg font-bold tracking-wide text-bg uppercase transition-colors hover:bg-accent-hover"
-              >
+              <button onClick={rampage.onNext} className={`${primaryButton} sm:flex-1`}>
                 Next fight
               </button>
-              <button
-                onClick={rampage.onSimulateRest}
-                className="border border-border px-8 py-4 font-display text-lg font-bold tracking-wide text-text uppercase transition-colors hover:border-border-strong"
-              >
+              <button onClick={rampage.onSimulateRest} className={`${secondaryButton} sm:flex-1`}>
                 Sim the remaining {rampage.total - rampage.fightNumber}
               </button>
             </>
           ) : (
-            <button
-              onClick={rampage.onFinish}
-              className="bg-accent px-8 py-4 font-display text-lg font-bold tracking-wide text-bg uppercase transition-colors hover:bg-accent-hover"
-            >
+            <button onClick={rampage.onFinish} className={`${primaryButton} sm:flex-1`}>
               Final results
             </button>
           )
         ) : (
           <>
-            <button
-              onClick={onRematch}
-              className="bg-accent px-8 py-4 font-display text-lg font-bold tracking-wide text-bg uppercase transition-colors hover:bg-accent-hover"
-            >
+            <button onClick={onRematch} className={`${primaryButton} sm:flex-1`}>
               Run it back
             </button>
-            <button
-              onClick={onNewFighter}
-              className="border border-border px-8 py-4 font-display text-lg font-bold tracking-wide text-text uppercase transition-colors hover:border-border-strong"
-            >
+            <button onClick={onNewFighter} className={`${secondaryButton} sm:flex-1`}>
               Build new fighter
             </button>
           </>
@@ -155,10 +171,4 @@ export function FightResultScreen({
       </div>
     </main>
   );
-}
-
-function formatControlTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.round(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
 }

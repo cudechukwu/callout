@@ -1,5 +1,8 @@
 import type { FightMethod } from "@/lib/simulation/types";
-import { summarizeRampage, type FightRecord } from "@/lib/rampage";
+import { summarizeRampage, RAMPAGE_LENGTH, type FightRecord } from "@/lib/rampage";
+import { Avatar } from "@/components/Avatar";
+import { RunGrid } from "@/components/RunTrack";
+import { primaryButton, secondaryButton } from "@/components/ui";
 
 const METHOD_LABELS: Record<FightMethod, string> = {
   KO: "Knockout",
@@ -7,7 +10,6 @@ const METHOD_LABELS: Record<FightMethod, string> = {
   SUB: "Submission",
   DEC: "Decision",
 };
-
 const METHODS: readonly FightMethod[] = ["KO", "TKO", "SUB", "DEC"];
 
 interface RampageSummaryProps {
@@ -26,81 +28,77 @@ export function RampageSummary({
   onNewFighter,
 }: RampageSummaryProps) {
   const summary = summarizeRampage(fights);
+  const perfect = summary.fights === RAMPAGE_LENGTH && summary.losses === 0;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-      <p className="font-mono text-sm tracking-widest text-text-faint uppercase">
-        Rampage complete
-      </p>
-      <h1 className="mt-1 font-display text-4xl font-black tracking-tight uppercase">
-        {fighterName}
-      </h1>
-      <p className="mt-1 font-mono text-sm tracking-widest text-text-muted uppercase">
-        {overall} OVR
-      </p>
-      <p className="mt-2 font-display text-6xl font-black tabular-nums text-accent">
-        {summary.wins}–{summary.losses}
-      </p>
-      <p className="mt-1 font-mono text-sm text-text-muted">
-        {summary.winPercent}% wins · best streak {summary.longestWinStreak} ·{" "}
-        {summary.finishes} of {summary.fights} fights finished early
-      </p>
+    <main className="mx-auto w-full max-w-3xl px-4 py-8">
+      <section className={`cut animate-rise-in px-6 py-8 sm:px-10 ${perfect ? "bg-belt-gold text-canvas" : "bg-panel"}`}>
+        <div className="flex items-center gap-4">
+          <Avatar name={fighterName} corner="red" className="cut-sm h-16 w-16 shrink-0" />
+          <div className="min-w-0">
+            <p className="truncate font-display text-3xl leading-none font-black tracking-wide uppercase">
+              {fighterName}
+            </p>
+            <p className={`mt-1 text-sm ${perfect ? "text-canvas/80" : "text-chalk"}`}>
+              <span className={`font-numeric text-lg font-bold ${perfect ? "text-canvas" : "text-belt-gold"}`}>
+                {overall}
+              </span>{" "}
+              overall
+            </p>
+          </div>
+        </div>
+        <p className={`mt-6 text-sm ${perfect ? "text-canvas/80" : "text-chalk"}`}>
+          {perfect ? "Perfect rampage" : "Rampage complete"}
+        </p>
+        <p className="font-display text-9xl leading-[0.85] font-black tabular-nums">
+          {summary.wins}–{summary.losses}
+        </p>
+        <dl className="mt-5 grid grid-cols-3 gap-4">
+          {[
+            [`${summary.winPercent}%`, "Won"],
+            [String(summary.longestWinStreak), "Best streak"],
+            [`${summary.finishes}`, "Ended early"],
+          ].map(([value, label]) => (
+            <div key={label}>
+              <dd className="font-numeric text-3xl leading-none font-bold">{value}</dd>
+              <dt className={`mt-1 text-xs ${perfect ? "text-canvas/80" : "text-chalk"}`}>{label}</dt>
+            </div>
+          ))}
+        </dl>
+      </section>
 
-      <div className="mt-8 border border-border bg-surface px-5 py-4">
-        <div className="grid grid-cols-[1fr_auto_auto] gap-x-6 border-b border-border pb-2 text-xs text-text-faint uppercase">
-          <span>Method</span>
+      <section className="cut mt-4 bg-panel px-5 py-5 sm:px-8" aria-label="How the fights ended">
+        <div className="grid grid-cols-[1fr_auto_auto] gap-x-8 border-b border-line pb-2 text-sm text-chalk">
+          <span>How they ended</span>
           <span className="text-right">Won</span>
           <span className="text-right">Lost</span>
         </div>
         {METHODS.map((method) => (
           <div
             key={method}
-            className="grid grid-cols-[1fr_auto_auto] gap-x-6 border-b border-border py-2.5 last:border-b-0"
+            className="grid grid-cols-[1fr_auto_auto] gap-x-8 border-b border-line py-2 last:border-b-0"
           >
-            <span className="text-sm text-text">{METHOD_LABELS[method]}</span>
-            <span className="text-right font-mono text-sm tabular-nums text-text">
+            <span className="text-bone">{METHOD_LABELS[method]}</span>
+            <span className="text-right font-numeric text-xl leading-none font-bold text-corner-red-bright">
               {summary.winsByMethod[method]}
             </span>
-            <span className="text-right font-mono text-sm tabular-nums text-text-muted">
+            <span className="text-right font-numeric text-xl leading-none font-bold text-chalk">
               {summary.lossesByMethod[method]}
             </span>
           </div>
         ))}
-      </div>
+      </section>
 
-      <ol className="mt-6 max-h-64 overflow-y-auto border border-border bg-surface">
-        {fights.map((fight, index) => (
-          <li
-            key={index}
-            className="flex items-center justify-between gap-3 border-b border-border px-4 py-2 text-sm last:border-b-0"
-          >
-            <span className="font-mono text-xs text-text-faint">{index + 1}</span>
-            <span className="min-w-0 flex-1 truncate text-text">{fight.opponentName}</span>
-            <span className="font-mono text-xs text-text-muted">
-              {METHOD_LABELS[fight.method]}
-              {fight.method !== "DEC" &&
-                ` R${fight.round} ${Math.floor(fight.roundTimeSeconds / 60)}:${String(
-                  Math.round(fight.roundTimeSeconds % 60)
-                ).padStart(2, "0")}`}
-            </span>
-            <span className={`w-4 text-right font-bold ${fight.won ? "text-accent" : "text-text-faint"}`}>
-              {fight.won ? "W" : "L"}
-            </span>
-          </li>
-        ))}
-      </ol>
+      <section className="cut mt-4 bg-panel px-5 py-5 sm:px-8" aria-label="Every fight">
+        <p className="mb-3 text-sm text-chalk">Every opponent</p>
+        <RunGrid fights={fights} />
+      </section>
 
-      <div className="mt-8 flex flex-col gap-3">
-        <button
-          onClick={onRampageAgain}
-          className="bg-accent px-8 py-4 font-display text-lg font-bold tracking-wide text-bg uppercase transition-colors hover:bg-accent-hover"
-        >
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <button onClick={onRampageAgain} className={`${primaryButton} sm:flex-1`}>
           Rampage again
         </button>
-        <button
-          onClick={onNewFighter}
-          className="border border-border px-8 py-4 font-display text-lg font-bold tracking-wide text-text uppercase transition-colors hover:border-border-strong"
-        >
+        <button onClick={onNewFighter} className={`${secondaryButton} sm:flex-1`}>
           Build new fighter
         </button>
       </div>

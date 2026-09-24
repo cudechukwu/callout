@@ -10,14 +10,14 @@ function findFighter(name: string) {
 }
 
 const DEMO_PICKS: Record<VisibleAttribute, string> = {
-  wrestling: "Khabib Nurmagomedov",
-  submissions: "Charles Oliveira",
+  wrestling: "Kamaru Usman",
+  submissions: "Tony Ferguson",
   boxing: "Anderson Silva",
   kickboxing: "Alex Pereira",
-  power: "Francis Ngannou",
-  cardio: "Max Holloway",
-  chin: "Dustin Poirier",
-  fightIq: "Jon Jones",
+  power: "Derrick Lewis",
+  cardio: "Stipe Miocic",
+  chin: "Robert Whittaker",
+  fightIq: "Leon Edwards",
 };
 
 /**

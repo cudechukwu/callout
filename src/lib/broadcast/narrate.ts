@@ -1,10 +1,27 @@
 import type { SimulationEvent } from "@/lib/simulation/types";
 
+/** Running count of what one fighter has done so far, for the live
+ * scoreboard on the fight screen. */
+export interface MomentTally {
+  strikes: number;
+  takedowns: number;
+  submissionAttempts: number;
+}
+
 export interface NarratedMoment {
   round: number;
   fightTimeSeconds: number;
   text: string;
   emphasis?: "hurt" | "finish";
+  /** Who did it (drives the finish banner colour). */
+  actorId: string;
+  /** Who the line is about, so the feed colours the right corner: for a
+   * stuffed takedown or a defended submission that is the defender. */
+  subjectId: string;
+  /** Tally per fighter id after this moment. */
+  tally: Readonly<Record<string, MomentTally>>;
+  /** Set on the moment that ends the fight. */
+  finishMethod?: "KO" | "TKO" | "SUB";
 }
 
 /**
@@ -50,11 +67,33 @@ export function narrateFight(
   fighterNames: Readonly<Record<string, string>>
 ): NarratedMoment[] {
   const moments: NarratedMoment[] = [];
+  const tally: Record<string, MomentTally> = {};
+  for (const id of Object.keys(fighterNames)) {
+    tally[id] = { strikes: 0, takedowns: 0, submissionAttempts: 0 };
+  }
 
   for (const event of events) {
+    const actorTally = tally[event.actorId];
+    if (actorTally) {
+      if (event.type === "strikeLanded") actorTally.strikes++;
+      else if (event.type === "takedownLanded") actorTally.takedowns++;
+      else if (event.type === "submissionAttempt") actorTally.submissionAttempts++;
+    }
+    const momentsBefore = moments.length;
     const actorName = fighterNames[event.actorId] ?? "Fighter";
     const targetName = fighterNames[event.targetId] ?? "Opponent";
-    const base = { round: event.round, fightTimeSeconds: event.fightTimeSeconds };
+    const base = {
+      round: event.round,
+      fightTimeSeconds: event.fightTimeSeconds,
+      actorId: event.actorId,
+      subjectId:
+        event.type === "takedownStuffed" || event.type === "submissionDefended"
+          ? event.targetId
+          : event.actorId,
+      tally: Object.fromEntries(
+        Object.entries(tally).map(([id, counts]) => [id, { ...counts }])
+      ) as Record<string, MomentTally>,
+    };
 
     switch (event.type) {
       case "strikeLanded":
@@ -116,6 +155,13 @@ export function narrateFight(
         // clinchEntryFailed, disengageFailed, escapeFailed,
         // standUpAttemptFailed.
         break;
+    }
+
+    if (moments.length > momentsBefore) {
+      const moment = moments[moments.length - 1]!;
+      if (event.type === "knockout") moment.finishMethod = "KO";
+      else if (event.type === "tko") moment.finishMethod = "TKO";
+      else if (event.type === "submission") moment.finishMethod = "SUB";
     }
   }
 

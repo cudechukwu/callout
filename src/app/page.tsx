@@ -1,42 +1,42 @@
 import Link from "next/link";
-import { FighterCard } from "@/components/FighterCard";
+import { FighterSheet } from "@/components/FighterSheet";
 import { DEMO_SELECTIONS } from "@/lib/data/demoFighter";
+import { computeOverall } from "@/lib/draft/overall";
+import { primaryButton } from "@/components/ui";
 
 export default function LandingPage() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-6 py-16 lg:px-10">
-      <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
+    <main className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-4 py-12 lg:px-10">
+      <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.15fr] lg:gap-14">
         <div>
-          <p className="font-display text-sm font-semibold tracking-[0.2em] text-accent">
-            FIVE-STAR MMA
-          </p>
-
-          <h1 className="mt-4 font-display text-6xl leading-[0.95] font-black tracking-tight uppercase sm:text-7xl">
+          <h1 className="font-display text-7xl leading-[0.85] font-black tracking-wide uppercase sm:text-8xl lg:text-9xl">
             Build the
             <br />
-            perfect fighter.
+            perfect
+            <br />
+            fighter
           </h1>
 
-          <p className="mt-6 max-w-md text-lg text-text-muted">
-            Choose the abilities. Enter the cage. See how long you survive.
+          <p className="mt-6 max-w-md text-lg text-chalk">
+            Pick one fighter for each skill, without seeing their numbers. Then find out
+            how good the fighter you built really is, and put them through twenty fights.
           </p>
 
-          <Link
-            href="/draft"
-            className="mt-8 inline-flex items-center bg-accent px-8 py-4 font-display text-lg font-bold tracking-wide text-bg uppercase transition-colors hover:bg-accent-hover"
-          >
+          <Link href="/draft" className={`${primaryButton} mt-8 inline-flex`}>
             Build my fighter
           </Link>
 
-          <p className="mt-6 max-w-md text-sm text-text-faint">
-            No account needed. Draft a fighter, take your first fight, then
-            run the gauntlet.
+          <p className="mt-5 max-w-md text-sm text-chalk-faint">
+            No account needed. Draft a fighter, take your first fight, then run the gauntlet.
           </p>
         </div>
 
-        <div>
-          <FighterCard name="Chiamaka" selections={DEMO_SELECTIONS} animateIn />
-        </div>
+        <FighterSheet
+          name="Chiamaka"
+          selections={DEMO_SELECTIONS}
+          overall={computeOverall(DEMO_SELECTIONS)}
+          reveal
+        />
       </div>
     </main>
   );

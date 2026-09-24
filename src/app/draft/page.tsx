@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   isDraftComplete,
   reroll,
@@ -14,19 +14,17 @@ import { createRng } from "@/lib/simulation/rng";
 import { simulateFight } from "@/lib/simulation/engine";
 import type { FighterSnapshot, FightResult, RNG } from "@/lib/simulation/types";
 import { narrateFight, type NarratedMoment } from "@/lib/broadcast/narrate";
-import { ATTRIBUTE_LABELS } from "@/lib/data/attributeLabels";
-import { SHOW_ATTRIBUTE_RATINGS } from "@/lib/config";
 import { computeOverall } from "@/lib/draft/overall";
-import {
-  RAMPAGE_LENGTH,
-  recordOf,
-  toFightRecord,
-  type FightRecord,
-} from "@/lib/rampage";
-import { FighterCard } from "@/components/FighterCard";
+import { RAMPAGE_LENGTH, recordOf, toFightRecord, type FightRecord } from "@/lib/rampage";
+import { Avatar } from "@/components/Avatar";
+import { DraftScreen } from "@/components/DraftScreen";
+import { FighterSheet } from "@/components/FighterSheet";
 import { FightViewer } from "@/components/FightViewer";
 import { FightResultScreen } from "@/components/FightResultScreen";
 import { RampageSummary } from "@/components/RampageSummary";
+import { RunHud } from "@/components/RunHud";
+import { TaleOfTape } from "@/components/TaleOfTape";
+import { primaryButton, secondaryButton } from "@/components/ui";
 
 type Phase =
   | "drafting"
@@ -39,6 +37,8 @@ type Phase =
 
 const NAME_MIN = 3;
 const NAME_MAX = 20;
+/** How long a pick's lock-in animation plays before the next round deals. */
+const PICK_LOCK_MS = 480;
 
 export default function DraftPage() {
   // Runs entirely client-side for now — there's no backend/persistence
@@ -50,17 +50,15 @@ export default function DraftPage() {
   const rngRef = useRef<RNG | null>(null);
 
   // Deliberately null until mount: this page is server-rendered for the
-  // initial HTML (it's still a "use client" component, which Next.js
-  // SSRs before hydrating), and Math.random() run during that SSR pass
-  // would produce different candidates than the client's own hydration
-  // pass — a textbook hydration mismatch. Generating the random seed
-  // only inside useEffect (client-only, post-mount) means the server
-  // and the client's first paint both render the same simple loading
-  // state, and the real randomized draft appears right after.
+  // initial HTML, and Math.random() run during that pass would produce
+  // different candidates than the client's hydration pass. Generating the
+  // seed only inside useEffect keeps the first paint identical on both.
   const [state, setState] = useState<DraftSessionState | null>(null);
   const [phase, setPhase] = useState<Phase>("drafting");
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<number | null>(null);
+  const pickTimer = useRef<number | null>(null);
 
   const [playerSnapshot, setPlayerSnapshot] = useState<FighterSnapshot | null>(null);
   const [opponent, setOpponent] = useState<FighterSnapshot | null>(null);
@@ -75,20 +73,38 @@ export default function DraftPage() {
   const recordedResultRef = useRef<FightResult | null>(null);
   const rampageFights = rampageStart === null ? [] : history.slice(rampageStart);
 
+  const playerOverall = useMemo(
+    () => (playerSnapshot ? computeOverall(playerSnapshot.selections) : 0),
+    [playerSnapshot]
+  );
+  const opponentOverall = useMemo(
+    () => (opponent ? computeOverall(opponent.selections) : 0),
+    [opponent]
+  );
+
   useEffect(() => {
     rngRef.current = createRng(Math.floor(Math.random() * 2 ** 31));
     setState(startDraft(rngRef.current));
+    return () => {
+      if (pickTimer.current !== null) window.clearTimeout(pickTimer.current);
+    };
   }, []);
 
   function handlePick(fighterId: number) {
-    if (!state) return;
-    const next = selectCandidate(state, fighterId, rngRef.current!);
-    setState(next);
-    if (isDraftComplete(next)) setPhase("naming");
+    if (!state || pendingId !== null) return;
+    setPendingId(fighterId);
+    // Let the pick lock in visibly before the next round is dealt. While
+    // it plays, further clicks are ignored (see `pendingId` above).
+    pickTimer.current = window.setTimeout(() => {
+      const next = selectCandidate(state, fighterId, rngRef.current!);
+      setState(next);
+      setPendingId(null);
+      if (isDraftComplete(next)) setPhase("naming");
+    }, PICK_LOCK_MS);
   }
 
   function handleReroll() {
-    if (!state) return;
+    if (!state || pendingId !== null) return;
     setState(reroll(state, rngRef.current!));
   }
 
@@ -108,20 +124,14 @@ export default function DraftPage() {
   function runFight(player: FighterSnapshot, cpu: FighterSnapshot) {
     const result = simulateFight(player, cpu, rngRef.current!);
     setFightResult(result);
-    setMoments(
-      narrateFight(result.events, { [player.id]: player.name, [cpu.id]: cpu.name })
-    );
+    setMoments(narrateFight(result.events, { [player.id]: player.name, [cpu.id]: cpu.name }));
   }
 
   function handleFindFight() {
     if (!playerSnapshot) return;
     const cpuId = typeof crypto !== "undefined" ? crypto.randomUUID() : `cpu-${Date.now()}`;
     const takenNames = new Set(rampageFights.map((fight) => fight.opponentName));
-    const cpu = generateCpuFighter(
-      rngRef.current!,
-      cpuId,
-      randomCpuName(rngRef.current!, takenNames)
-    );
+    const cpu = generateCpuFighter(rngRef.current!, cpuId, randomCpuName(rngRef.current!, takenNames));
     setOpponent(cpu);
     runFight(playerSnapshot, cpu);
     setPhase("opponentReveal");
@@ -179,18 +189,32 @@ export default function DraftPage() {
     setRampageStart(null);
     recordedResultRef.current = null;
     setName("");
+    setNameError(null);
+    setPendingId(null);
     setPhase("drafting");
     setState(startDraft(rngRef.current!));
   }
 
   if (phase === "naming") {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-        <h1 className="font-display text-5xl font-black tracking-tight uppercase">
-          Name your fighter
-        </h1>
-        <form onSubmit={handleNameSubmit} className="mt-8" noValidate>
+      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-10">
+        <div className="animate-rise-in">
+          <p className="text-chalk">Draft complete</p>
+          <h1 className="mt-1 font-display text-6xl leading-[0.9] font-black tracking-wide uppercase">
+            Name your fighter
+          </h1>
+        </div>
+        <Avatar
+          name={name.trim() || "Your fighter"}
+          corner="red"
+          className="cut animate-rise-in mt-6 aspect-[4/3] w-full"
+        />
+        <form onSubmit={handleNameSubmit} className="mt-6" noValidate>
+          <label htmlFor="fighter-name" className="sr-only">
+            Fighter name
+          </label>
           <input
+            id="fighter-name"
             autoFocus
             value={name}
             onChange={(event) => {
@@ -199,14 +223,16 @@ export default function DraftPage() {
             }}
             placeholder="Nightshift"
             maxLength={NAME_MAX}
-            className="w-full border border-border bg-surface px-4 py-3 font-display text-2xl tracking-wide text-text uppercase placeholder:text-text-faint placeholder:normal-case focus:border-accent focus:outline-none"
+            aria-describedby={nameError ? "fighter-name-error" : undefined}
+            className="cut-sm w-full bg-panel px-4 py-4 font-display text-3xl font-bold tracking-wide text-bone uppercase placeholder:text-chalk-faint placeholder:normal-case focus:bg-panel-raised focus:outline-2 focus:outline-belt-gold"
           />
-          {nameError && <p className="mt-2 text-sm text-accent">{nameError}</p>}
-          <button
-            type="submit"
-            className="mt-6 w-full bg-accent px-8 py-4 font-display text-lg font-bold tracking-wide text-bg uppercase transition-colors hover:bg-accent-hover"
-          >
-            Continue
+          {nameError && (
+            <p id="fighter-name-error" className="mt-2 text-sm text-corner-red-bright">
+              {nameError}
+            </p>
+          )}
+          <button type="submit" className={`${primaryButton} mt-4 w-full`}>
+            Reveal my fighter
           </button>
         </form>
       </main>
@@ -214,174 +240,159 @@ export default function DraftPage() {
   }
 
   if (!state) {
-    // Covers the brief window before useEffect generates the random
-    // seed on mount — also what the server renders, so the very first
-    // client paint matches it exactly (no hydration mismatch).
+    // Covers the brief window before useEffect generates the random seed
+    // on mount — also what the server renders, so the first client paint
+    // matches it exactly (no hydration mismatch).
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
-        <p className="font-mono text-sm text-text-muted">Loading draft…</p>
+        <p className="text-chalk">Setting up the draft…</p>
       </main>
     );
   }
 
-  if (phase === "complete" && playerSnapshot) {
-    return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-6 py-12">
-        <p className="font-mono text-sm tracking-widest text-text-faint uppercase">
-          Your fighter is ready
-        </p>
-        <FighterCard
-          name={playerSnapshot.name}
-          selections={playerSnapshot.selections}
-          record={recordOf(history)}
-          overall={computeOverall(playerSnapshot.selections)}
-          animateIn
-        />
-        <button
-          onClick={() => {
-            setRampageStart(null);
-            handleFindFight();
-          }}
-          className="bg-accent px-8 py-4 font-display text-lg font-bold tracking-wide text-bg uppercase transition-colors hover:bg-accent-hover"
-        >
-          Find a fight
-        </button>
-        <button
-          onClick={handleStartRampage}
-          className="border border-border px-8 py-4 font-display text-lg font-bold tracking-wide text-text uppercase transition-colors hover:border-border-strong"
-        >
-          Rampage · {RAMPAGE_LENGTH} fights
-        </button>
-      </main>
-    );
-  }
-
-  if (phase === "opponentReveal" && playerSnapshot && opponent) {
-    return (
-      <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-8 px-6 py-12">
-        {rampageStart !== null && (
-          <p className="text-center font-mono text-sm tracking-widest text-text-faint uppercase">
-            Rampage · Fight {rampageFights.length + 1} of {RAMPAGE_LENGTH}
-          </p>
-        )}
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <p className="mb-2 font-mono text-xs tracking-widest text-text-faint uppercase">You</p>
-            <FighterCard
-              name={playerSnapshot.name}
-              selections={playerSnapshot.selections}
-              record={recordOf(rampageStart === null ? history : rampageFights)}
-              overall={computeOverall(playerSnapshot.selections)}
-            />
-          </div>
-          <div>
-            <p className="mb-2 font-mono text-xs tracking-widest text-text-faint uppercase">CPU</p>
-            <FighterCard
-              name={opponent.name}
-              selections={opponent.selections}
-              overall={computeOverall(opponent.selections)}
-            />
-          </div>
-        </div>
-        <button
-          onClick={() => setPhase("fighting")}
-          className="mx-auto bg-accent px-10 py-4 font-display text-lg font-bold tracking-wide text-bg uppercase transition-colors hover:bg-accent-hover"
-        >
-          Fight
-        </button>
-      </main>
-    );
-  }
-
-  if (phase === "fighting" && fightResult) {
-    return (
-      <main className="mx-auto min-h-screen max-w-md px-6 py-10">
-        <FightViewer moments={moments} onComplete={handleFightComplete} />
-      </main>
-    );
-  }
-
-  if (phase === "result" && fightResult && playerSnapshot && opponent) {
-    return (
-      <FightResultScreen
-        result={fightResult}
-        playerId={playerSnapshot.id}
-        playerName={playerSnapshot.name}
-        opponentId={opponent.id}
-        opponentName={opponent.name}
+  // Everything after the draft shares one run bar, so the run feels
+  // continuous: who you are, how strong you are, how it's going.
+  const hud =
+    playerSnapshot && phase !== "drafting" && phase !== "complete" ? (
+      <RunHud
+        name={playerSnapshot.name}
+        overall={playerOverall}
         record={recordOf(rampageStart === null ? history : rampageFights)}
         rampage={
           rampageStart === null
             ? undefined
             : {
-                fightNumber: rampageFights.length,
+                fights: rampageFights,
                 total: RAMPAGE_LENGTH,
-                onNext: handleFindFight,
-                onSimulateRest: handleSimulateRest,
-                onFinish: () => setPhase("rampageSummary"),
+                inProgress: phase === "opponentReveal" || phase === "fighting",
               }
         }
-        onRematch={handleRematch}
-        onNewFighter={handleNewFighter}
       />
+    ) : null;
+
+  if (phase === "complete" && playerSnapshot) {
+    return (
+      <>
+        <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8">
+          <div>
+            <p className="text-chalk">Your fighter is ready</p>
+          </div>
+          <FighterSheet
+            name={playerSnapshot.name}
+            selections={playerSnapshot.selections}
+            overall={playerOverall}
+            reveal
+          />
+          <div
+            className="animate-rise-in flex flex-col gap-3 sm:flex-row"
+            style={{ animationDelay: "1800ms" }}
+          >
+            <button
+              onClick={() => {
+                setRampageStart(null);
+                handleFindFight();
+              }}
+              className={`${primaryButton} sm:flex-1`}
+            >
+              Find a fight
+            </button>
+            <button onClick={handleStartRampage} className={`${secondaryButton} sm:flex-1`}>
+              Rampage: {RAMPAGE_LENGTH} fights
+            </button>
+          </div>
+        </main>
+      </>
+    );
+  }
+
+  if (phase === "opponentReveal" && playerSnapshot && opponent) {
+    return (
+      <>
+        {hud}
+        <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
+          {rampageStart !== null && (
+            <p className="text-center text-chalk">
+              Fight {rampageFights.length + 1} of {RAMPAGE_LENGTH}
+            </p>
+          )}
+          <TaleOfTape
+            player={{
+              name: playerSnapshot.name,
+              overall: playerOverall,
+              selections: playerSnapshot.selections,
+              record: recordOf(rampageStart === null ? history : rampageFights),
+            }}
+            cpu={{ name: opponent.name, overall: opponentOverall, selections: opponent.selections }}
+          />
+          <div className="sticky bottom-0 -mx-4 bg-gradient-to-t from-canvas via-canvas/95 to-transparent px-4 pt-6 pb-4">
+            <button onClick={() => setPhase("fighting")} className={`${primaryButton} mx-auto block w-full max-w-sm`}>
+              Start fight
+            </button>
+          </div>
+        </main>
+      </>
+    );
+  }
+
+  if (phase === "fighting" && fightResult && playerSnapshot && opponent) {
+    return (
+      <>
+        {hud}
+        <FightViewer
+          moments={moments}
+          playerId={playerSnapshot.id}
+          playerName={playerSnapshot.name}
+          opponentId={opponent.id}
+          opponentName={opponent.name}
+          onComplete={handleFightComplete}
+        />
+      </>
+    );
+  }
+
+  if (phase === "result" && fightResult && playerSnapshot && opponent) {
+    return (
+      <>
+        {hud}
+        <FightResultScreen
+          result={fightResult}
+          playerId={playerSnapshot.id}
+          playerName={playerSnapshot.name}
+          opponentId={opponent.id}
+          opponentName={opponent.name}
+          rampage={
+            rampageStart === null
+              ? undefined
+              : {
+                  fightNumber: rampageFights.length,
+                  total: RAMPAGE_LENGTH,
+                  onNext: handleFindFight,
+                  onSimulateRest: handleSimulateRest,
+                  onFinish: () => setPhase("rampageSummary"),
+                }
+          }
+          onRematch={handleRematch}
+          onNewFighter={handleNewFighter}
+        />
+      </>
     );
   }
 
   if (phase === "rampageSummary" && playerSnapshot) {
     return (
-      <RampageSummary
-        fighterName={playerSnapshot.name}
-        overall={computeOverall(playerSnapshot.selections)}
-        fights={rampageFights}
-        onRampageAgain={handleStartRampage}
-        onNewFighter={handleNewFighter}
-      />
+      <>
+        {hud}
+        <RampageSummary
+          fighterName={playerSnapshot.name}
+          overall={playerOverall}
+          fights={rampageFights}
+          onRampageAgain={handleStartRampage}
+          onNewFighter={handleNewFighter}
+        />
+      </>
     );
   }
 
   // phase === "drafting"
-  const attribute = state.attributeOrder[state.roundIndex]!;
-  const candidates = state.currentCandidates!;
-
-  return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col px-6 py-10">
-      <div className="flex items-center justify-between">
-        <span className="font-mono text-sm text-text-muted">
-          Round {state.roundIndex + 1} of {state.attributeOrder.length}
-        </span>
-        <button
-          onClick={handleReroll}
-          disabled={state.rerollsRemaining === 0}
-          className="font-mono text-sm text-text-muted underline decoration-dotted underline-offset-4 transition-colors hover:text-text disabled:text-text-faint disabled:no-underline"
-        >
-          Reroll ({state.rerollsRemaining})
-        </button>
-      </div>
-
-      <h1 className="mt-6 font-display text-5xl font-black tracking-tight uppercase">
-        {ATTRIBUTE_LABELS[attribute]}
-      </h1>
-      <p className="mt-2 text-sm text-text-muted">
-        Choose one fighter&rsquo;s ability. Once picked, they&rsquo;re off the board for
-        every other attribute.
-      </p>
-
-      <div className="mt-8 flex flex-col gap-3">
-        {candidates.map((fighter) => (
-          <button
-            key={fighter.id}
-            onClick={() => handlePick(fighter.id)}
-            className="flex items-center justify-between border border-border bg-surface px-6 py-5 text-left transition-colors hover:border-accent hover:bg-surface-raised"
-          >
-            <span className="font-medium text-text">{fighter.name}</span>
-            {SHOW_ATTRIBUTE_RATINGS && (
-              <span className="font-mono text-3xl font-medium tabular-nums text-text">
-                {fighter[attribute].toFixed(1)}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-    </main>
-  );
+  return <DraftScreen state={state} pendingId={pendingId} onPick={handlePick} onReroll={handleReroll} />;
 }

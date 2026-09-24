@@ -84,3 +84,30 @@ describe("narrateFight", () => {
     expect(texts[2]).toContain("leg");
   });
 });
+
+describe("narrateFight: scoreboard data", () => {
+  const names = { a: "Alpha", b: "Bravo" };
+  const ev = (type: string, actorId: string, targetId: string, sequence: number) =>
+    ({ sequence, round: 1, fightTimeSeconds: sequence * 10, type, actorId, targetId }) as never;
+
+  it("keeps a running tally per fighter", () => {
+    const moments = narrateFight(
+      [ev("strikeLanded", "a", "b", 1), ev("strikeLanded", "a", "b", 2), ev("takedownLanded", "b", "a", 3)],
+      names
+    );
+    expect(moments[1]!.tally.a!.strikes).toBe(2);
+    expect(moments[2]!.tally.b!.takedowns).toBe(1);
+    expect(moments[2]!.tally.a!.strikes).toBe(2);
+  });
+
+  it("attributes a stuffed takedown to the defender, who the line is about", () => {
+    const [moment] = narrateFight([ev("takedownStuffed", "a", "b", 1)], names);
+    expect(moment!.actorId).toBe("a");
+    expect(moment!.subjectId).toBe("b");
+  });
+
+  it("marks the finishing moment with its method", () => {
+    const [moment] = narrateFight([ev("tko", "a", "b", 1)], names);
+    expect(moment!.finishMethod).toBe("TKO");
+  });
+});
