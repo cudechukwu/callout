@@ -1,5 +1,6 @@
 import { VISIBLE_ATTRIBUTES } from "@/lib/data/types";
 import { ATTRIBUTE_LABELS } from "@/lib/data/attributeLabels";
+import { SHOW_ATTRIBUTE_NUMBERS } from "@/lib/config";
 import { ratingToDisplay } from "@/lib/ratings";
 import type { AttributeSelections } from "@/lib/simulation/types";
 import { Avatar } from "@/components/Avatar";
@@ -63,17 +64,21 @@ export function TaleOfTape({ player, cpu }: TaleOfTapeProps) {
           return (
             <div
               key={attribute}
-              className="grid grid-cols-[1fr_5.5rem_1fr] items-center gap-2 py-1.5 sm:grid-cols-[1fr_8rem_1fr] sm:gap-4"
+              className="grid grid-cols-[1fr_5.5rem_1fr] items-center gap-2 py-2 sm:grid-cols-[1fr_8rem_1fr] sm:gap-4"
             >
               <div className="flex items-center justify-end gap-2">
-                <span
-                  className={`font-numeric text-xl leading-none font-bold ${left >= right ? "text-bone" : "text-chalk-faint"}`}
-                >
-                  {left}
-                </span>
+                {SHOW_ATTRIBUTE_NUMBERS ? (
+                  <span
+                    className={`font-numeric text-xl leading-none font-bold ${left >= right ? "text-bone" : "text-chalk-faint"}`}
+                  >
+                    {left}
+                  </span>
+                ) : (
+                  <span className="sr-only">{`${left} out of 99`}</span>
+                )}
                 <div className="h-2 w-full max-w-[14rem] overflow-hidden bg-line" aria-hidden="true">
                   <div
-                    className="animate-bar-fill-right ml-auto h-full w-full bg-corner-red"
+                    className={`animate-bar-fill-right ml-auto h-full w-full bg-corner-red ${left < right ? "opacity-45" : ""}`}
                     style={{ "--fill": left / 100, animationDelay: `${delay}ms` } as React.CSSProperties}
                   />
                 </div>
@@ -84,15 +89,19 @@ export function TaleOfTape({ player, cpu }: TaleOfTapeProps) {
               <div className="flex items-center gap-2">
                 <div className="h-2 w-full max-w-[14rem] overflow-hidden bg-line" aria-hidden="true">
                   <div
-                    className="animate-bar-fill h-full w-full bg-corner-blue"
+                    className={`animate-bar-fill h-full w-full bg-corner-blue ${right < left ? "opacity-45" : ""}`}
                     style={{ "--fill": right / 100, animationDelay: `${delay}ms` } as React.CSSProperties}
                   />
                 </div>
-                <span
-                  className={`font-numeric text-xl leading-none font-bold ${right >= left ? "text-bone" : "text-chalk-faint"}`}
-                >
-                  {right}
-                </span>
+                {SHOW_ATTRIBUTE_NUMBERS ? (
+                  <span
+                    className={`font-numeric text-xl leading-none font-bold ${right >= left ? "text-bone" : "text-chalk-faint"}`}
+                  >
+                    {right}
+                  </span>
+                ) : (
+                  <span className="sr-only">{`${right} out of 99`}</span>
+                )}
               </div>
             </div>
           );

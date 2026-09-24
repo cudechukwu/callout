@@ -1,5 +1,6 @@
 import { VISIBLE_ATTRIBUTES } from "@/lib/data/types";
 import { ATTRIBUTE_LABELS } from "@/lib/data/attributeLabels";
+import { SHOW_ATTRIBUTE_NUMBERS } from "@/lib/config";
 import { ratingToDisplay } from "@/lib/ratings";
 import type { AttributeSelections } from "@/lib/simulation/types";
 import { Avatar, type Corner } from "@/components/Avatar";
@@ -29,6 +30,12 @@ export function FighterSheet({
   record,
 }: FighterSheetProps) {
   const barColor = corner === "blue" ? "bg-corner-blue" : "bg-corner-red";
+  const values = VISIBLE_ATTRIBUTES.map((a) => ratingToDisplay(selections[a].sourceFighter[a]));
+  const highest = Math.max(...values);
+  const lowest = Math.min(...values);
+  // Only call out a best pick / weak link when there is a real spread;
+  // every row that ties for the extreme gets the tag.
+  const hasSpread = highest > lowest;
 
   return (
     <div className="cut relative bg-panel">
@@ -57,9 +64,21 @@ export function FighterSheet({
           <dl className="mt-3">
             {VISIBLE_ATTRIBUTES.map((attribute, index) => {
               const pick = selections[attribute].sourceFighter;
-              const value = ratingToDisplay(pick[attribute]);
+              const value = values[index]!;
+              const callout = !hasSpread
+                ? null
+                : value === highest
+                  ? "Best pick"
+                  : value === lowest
+                    ? "Weak link"
+                    : null;
               return (
-                <div key={attribute} className="grid grid-cols-[6.5rem_1fr_2.25rem] items-center gap-3 py-[7px]">
+                <div
+                  key={attribute}
+                  className={`grid items-center gap-3 py-[7px] ${
+                    SHOW_ATTRIBUTE_NUMBERS ? "grid-cols-[6.5rem_1fr_2.25rem]" : "grid-cols-[6.5rem_1fr_4.5rem]"
+                  }`}
+                >
                   <dt className="min-w-0">
                     <span className="block text-sm leading-tight font-medium text-bone">
                       {ATTRIBUTE_LABELS[attribute]}
@@ -79,7 +98,22 @@ export function FighterSheet({
                       }
                     />
                   </dd>
-                  <dd className="text-right font-numeric text-xl leading-none font-bold text-bone">{value}</dd>
+                  <dd className="text-right">
+                    {SHOW_ATTRIBUTE_NUMBERS ? (
+                      <span className="font-numeric text-xl leading-none font-bold text-bone">{value}</span>
+                    ) : (
+                      callout && (
+                        <span
+                          className={`text-xs font-semibold ${
+                            callout === "Best pick" ? "text-belt-gold" : "text-corner-red-bright"
+                          }`}
+                        >
+                          {callout}
+                        </span>
+                      )
+                    )}
+                    <span className="sr-only">{`${value} out of 99`}</span>
+                  </dd>
                 </div>
               );
             })}
