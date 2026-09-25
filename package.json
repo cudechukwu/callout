@@ -13,7 +13,8 @@
     "seed:fighters": "tsx scripts/seed-fighters.ts",
     "balance:report": "tsx scripts/balance-report.ts",
     "balance:wrestling-sweep": "tsx scripts/wrestling-sweep.ts",
-    "test:db": "vitest run --config vitest.db.config.ts"
+    "test:db": "vitest run --config vitest.db.config.ts",
+    "portraits": "tsx scripts/portraits.ts"
   },
   "dependencies": {
     "@prisma/client": "^7.10.0",

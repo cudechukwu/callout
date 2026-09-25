@@ -1,5 +1,6 @@
 import type { SourceFighter } from "@/lib/data/types";
 import { DRAFT_POOL } from "@/lib/draft/draftPool";
+import { MEN_PORTRAITS, WOMEN_PORTRAITS } from "@/lib/portraits.generated";
 
 /**
  * Fighter portraits (fictional, AI-generated; /public/fighters). They are
@@ -8,11 +9,12 @@ import { DRAFT_POOL } from "@/lib/draft/draftPool";
  * always show three different faces of the right gender, and once a
  * fighter is picked, his face is locked for the rest of that draft.
  *
- * To add portraits: drop square images in /public/fighters and raise the
- * counts below.
+ * To add or remove portraits: put source images in /public/avatars named
+ * m-*.png (men) or w-*.png (women), delete the ones you don't want, and run
+ * `npm run portraits`.
  */
-const MEN = Array.from({ length: 10 }, (_, i) => `/fighters/m-${String(i + 1).padStart(2, "0")}.jpg`);
-const WOMEN = Array.from({ length: 3 }, (_, i) => `/fighters/w-${String(i + 1).padStart(2, "0")}.jpg`);
+const MEN = MEN_PORTRAITS;
+const WOMEN = WOMEN_PORTRAITS;
 
 /** Women in the draft pool (names as in the fighter data). */
 const WOMEN_FIGHTERS = new Set([
