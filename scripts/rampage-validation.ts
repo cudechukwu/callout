@@ -11,7 +11,7 @@
  */
 import { generateCpuFighter } from "../src/lib/draft/cpuFighter";
 import { computeOverall } from "../src/lib/draft/overall";
-import { isDraftComplete, selectCandidate, startDraft, toFighterSnapshot } from "../src/lib/draft/session";
+import { isAlreadyUsed, isDraftComplete, selectCandidate, startDraft, toFighterSnapshot } from "../src/lib/draft/session";
 import { DEFAULT_TUNING, simulateFight, type SimulationTuning } from "../src/lib/simulation/engine";
 import { createRng } from "../src/lib/simulation/rng";
 import type { FighterSnapshot } from "../src/lib/simulation/types";
@@ -57,10 +57,10 @@ function draftOne(): FighterSnapshot {
   let state = startDraft(buildRng);
   while (!isDraftComplete(state)) {
     const attribute = state.attributeOrder[state.roundIndex]!;
-    const candidates = [...state.currentCandidates!];
+    const candidates = state.currentCandidates!.filter((f) => !isAlreadyUsed(state, f.id));
     const best = candidates.reduce((a, b) => (b[attribute] > a[attribute] ? b : a));
-    const pick = buildRng.next() < skill ? best : candidates[Math.floor(buildRng.next() * 3)]!;
-    state = selectCandidate(state, pick.id, buildRng);
+    const pick = buildRng.next() < skill ? best : candidates[Math.floor(buildRng.next() * candidates.length)]!;
+    state = selectCandidate(state, pick.id);
   }
   return toFighterSnapshot(state, "player", "player");
 }

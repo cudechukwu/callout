@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { DRAFT_POOL } from "./draftPool";
 import { computeYourCalls } from "./answerSheet";
 import { slotValue } from "./overall";
-import { isDraftComplete, selectCandidate, startDraft, type BoardRecord } from "./session";
+import { isAlreadyUsed, isDraftComplete, selectCandidate, startDraft, type BoardRecord } from "./session";
 import { createRng } from "../simulation/rng";
 
 /** Drafts with a strategy: "best" / "worst" by real slot value, or a random card. */
@@ -13,15 +13,15 @@ function draft(seed: number, strategy: "best" | "worst" | "random") {
   let state = startDraft(rng);
   while (!isDraftComplete(state)) {
     const attribute = state.attributeOrder[state.roundIndex]!;
-    const cards = [...state.currentCandidates!];
+    const cards = state.currentCandidates!.filter((f) => !isAlreadyUsed(state, f.id));
     const values = cards.map((c) => slotValue(c, attribute));
     const index =
       strategy === "best"
         ? values.indexOf(Math.max(...values))
         : strategy === "worst"
           ? values.indexOf(Math.min(...values))
-          : Math.floor(rng.next() * 3);
-    state = selectCandidate(state, cards[index]!.id, rng);
+          : Math.floor(rng.next() * cards.length);
+    state = selectCandidate(state, cards[index]!.id);
   }
   return state;
 }
@@ -65,7 +65,7 @@ describe("computeYourCalls", () => {
 
   it("names the passed-over card that would have added the most, and by how much", () => {
     const [a, b, c] = [DRAFT_POOL[0]!, DRAFT_POOL[10]!, DRAFT_POOL[20]!];
-    const history: BoardRecord[] = [{ attribute: "power", cards: [a, b, c], pickedId: a.id }];
+    const history: BoardRecord[] = [{ attribute: "power", cards: [a, b, c], pickedId: a.id, offerIndex: 0 }];
     const values = [a, b, c].map((f) => slotValue(f, "power"));
     const topIndex = values.indexOf(Math.max(...values));
     const calls = computeYourCalls(history)!;

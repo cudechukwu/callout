@@ -5,16 +5,16 @@ import { VISIBLE_ATTRIBUTES } from "../data/types";
 import { ALL_ELITE, ALL_WEAK, buildArchetypeSnapshot, ELITE_STRIKER, ELITE_WRESTLER } from "../simulation/balanceFixtures";
 import { createRng } from "../simulation/rng";
 import { computeIdentity } from "./identity";
-import { isDraftComplete, selectCandidate, startDraft } from "./session";
+import { isAlreadyUsed, isDraftComplete, selectCandidate, startDraft } from "./session";
 
 function drafted(seed: number, skill: number) {
   const rng = createRng(seed);
   let state = startDraft(rng);
   while (!isDraftComplete(state)) {
     const attribute = state.attributeOrder[state.roundIndex]!;
-    const candidates = [...state.currentCandidates!];
+    const candidates = state.currentCandidates!.filter((f) => !isAlreadyUsed(state, f.id));
     const best = candidates.reduce((a, b) => (b[attribute] > a[attribute] ? b : a));
-    state = selectCandidate(state, (rng.next() < skill ? best : candidates[Math.floor(rng.next() * 3)]!).id, rng);
+    state = selectCandidate(state, (rng.next() < skill ? best : candidates[Math.floor(rng.next() * candidates.length)]!).id);
   }
   const selections: Record<string, { sourceFighter: unknown }> = {};
   for (const [k, f] of state.selections) selections[k] = { sourceFighter: f };

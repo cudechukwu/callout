@@ -9,7 +9,7 @@
  */
 import { VISIBLE_ATTRIBUTES } from "../src/lib/data/types";
 import { generateCpuFighter } from "../src/lib/draft/cpuFighter";
-import { isDraftComplete, selectCandidate, startDraft, toFighterSnapshot } from "../src/lib/draft/session";
+import { isAlreadyUsed, isDraftComplete, selectCandidate, startDraft, toFighterSnapshot } from "../src/lib/draft/session";
 import { buildFullAttributeRatings, type FullAttributeRatings } from "../src/lib/simulation/derivedStats";
 import { simulateFight } from "../src/lib/simulation/engine";
 import { createRng } from "../src/lib/simulation/rng";
@@ -26,10 +26,10 @@ function draftWithSkill(rng: RNG, id: string, skill: number): FighterSnapshot {
   let state = startDraft(rng);
   while (!isDraftComplete(state)) {
     const attribute = state.attributeOrder[state.roundIndex]!;
-    const candidates = [...state.currentCandidates!];
+    const candidates = state.currentCandidates!.filter((f) => !isAlreadyUsed(state, f.id));
     const best = candidates.reduce((a, b) => (b[attribute] > a[attribute] ? b : a));
-    const pick = rng.next() < skill ? best : candidates[Math.floor(rng.next() * 3)]!;
-    state = selectCandidate(state, pick.id, rng);
+    const pick = rng.next() < skill ? best : candidates[Math.floor(rng.next() * candidates.length)]!;
+    state = selectCandidate(state, pick.id);
   }
   return toFighterSnapshot(state, id, id);
 }

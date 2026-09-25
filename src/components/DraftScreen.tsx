@@ -3,7 +3,7 @@
 import { ATTRIBUTE_LABELS } from "@/lib/data/attributeLabels";
 import { SHOW_ATTRIBUTE_RATINGS } from "@/lib/config";
 import { ATTRIBUTE_BLURB, ATTRIBUTE_SHORT, ratingToDisplay } from "@/lib/ratings";
-import type { DraftSessionState } from "@/lib/draft/session";
+import { isAlreadyUsed, type DraftSessionState } from "@/lib/draft/session";
 import { Avatar } from "@/components/Avatar";
 
 interface DraftScreenProps {
@@ -52,16 +52,23 @@ export function DraftScreen({ state, pendingId, onPick, onReroll }: DraftScreenP
       >
         {candidates.map((fighter, index) => {
           const selected = pendingId === fighter.id;
+          const used = isAlreadyUsed(state, fighter.id);
           return (
             <div key={fighter.id} className="animate-deal-in min-h-0" style={{ animationDelay: `${index * 110}ms` }}>
               <button
                 onClick={() => onPick(fighter.id)}
-                disabled={busy}
-                aria-label={`Pick ${fighter.name} for ${ATTRIBUTE_LABELS[attribute]}`}
+                disabled={busy || used}
+                aria-label={
+                  used
+                    ? `${fighter.name}, already used`
+                    : `Pick ${fighter.name} for ${ATTRIBUTE_LABELS[attribute]}`
+                }
                 className={`group relative flex h-full w-full items-stretch overflow-hidden border text-left backdrop-blur-[3px] transition-all duration-200 sm:flex-col ${
                   selected
                     ? "animate-lock-in border-bone bg-panel/50"
-                    : busy
+                    : used
+                      ? "cursor-not-allowed border-line/40 bg-panel/10 opacity-35 grayscale"
+                      : busy
                       ? "border-line/70 bg-panel/20 opacity-40"
                       : "border-line/70 bg-panel/25 hover:-translate-y-1 hover:border-bone/70 hover:bg-panel/45"
                 }`}
@@ -70,7 +77,7 @@ export function DraftScreen({ state, pendingId, onPick, onReroll }: DraftScreenP
                 <span
                   aria-hidden="true"
                   className={`absolute inset-x-0 bottom-0 z-10 h-[3px] origin-left bg-corner-red transition-transform duration-300 ${
-                    selected ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+                    selected ? "scale-x-100" : used ? "scale-x-0" : "scale-x-0 group-hover:scale-x-100"
                   }`}
                 />
                 <Avatar
@@ -88,10 +95,10 @@ export function DraftScreen({ state, pendingId, onPick, onReroll }: DraftScreenP
                   )}
                   <p
                     className={`mt-0.5 text-sm transition-colors ${
-                      selected ? "font-medium text-bone" : "text-chalk group-hover:text-bone"
+                      selected ? "font-medium text-bone" : used ? "text-chalk" : "text-chalk group-hover:text-bone"
                     }`}
                   >
-                    {selected ? "Locked in" : `Use for ${ATTRIBUTE_LABELS[attribute]}`}
+                    {selected ? "Locked in" : used ? "Already used" : `Use for ${ATTRIBUTE_LABELS[attribute]}`}
                   </p>
                 </div>
               </button>

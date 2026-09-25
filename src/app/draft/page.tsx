@@ -120,7 +120,7 @@ export default function DraftPage() {
     // Let the pick lock in visibly before the next round is dealt. While
     // it plays, further clicks are ignored (see `pendingId` above).
     pickTimer.current = window.setTimeout(() => {
-      const next = selectCandidate(state, fighterId, rngRef.current!);
+      const next = selectCandidate(state, fighterId);
       setState(next);
       setPendingId(null);
       if (isDraftComplete(next)) setPhase("naming");
@@ -129,7 +129,7 @@ export default function DraftPage() {
 
   function handleReroll() {
     if (!state || pendingId !== null) return;
-    setState(reroll(state, rngRef.current!));
+    setState(reroll(state));
   }
 
   function handleNameSubmit(event: React.FormEvent) {

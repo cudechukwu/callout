@@ -11,10 +11,9 @@ import type { BoardRecord } from "./session";
  * "Biggest miss" is a real swap: holding every other pick fixed, the better
  * card was on that board and was not a fighter used in another slot.
  *
- * "Best from the cards you saw" is a hindsight upper bound, not a promise:
- * had a different card been taken earlier, later boards would have been
- * dealt differently, so the best combination of shown cards may never have
- * been reachable. It is worded that way in the UI.
+ * "Best from the cards you saw" is exact and reachable: boards come from a
+ * fixed plan that never depends on picks, so any one-per-fighter mix of the
+ * boards you picked from (after your rerolls) was a legal draft.
  */
 export interface YourCalls {
   /** OVR points between what was built and the best mix of the shown cards. */

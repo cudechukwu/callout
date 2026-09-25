@@ -1,7 +1,7 @@
 import type { SourceFighter } from "@/lib/data/types";
 import type { FighterSnapshot, RNG } from "@/lib/simulation/types";
 import { DRAFT_POOL } from "./draftPool";
-import { isDraftComplete, selectCandidate, startDraft, toFighterSnapshot } from "./session";
+import { isAlreadyUsed, isDraftComplete, selectCandidate, startDraft, toFighterSnapshot } from "./session";
 
 /**
  * Fictional CPU identities — per DESIGN_FINAL.md > AI/NPC Usage, these
@@ -56,9 +56,9 @@ export function generateCpuFighter(
 ): FighterSnapshot {
   let state = startDraft(rng, pool);
   while (!isDraftComplete(state)) {
-    const candidates = state.currentCandidates!;
+    const candidates = state.currentCandidates!.filter((f) => !isAlreadyUsed(state, f.id));
     const pick = candidates[Math.floor(rng.next() * candidates.length)]!;
-    state = selectCandidate(state, pick.id, rng, pool);
+    state = selectCandidate(state, pick.id, pool);
   }
   return toFighterSnapshot(state, id, name);
 }

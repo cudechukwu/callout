@@ -9,7 +9,7 @@
  *
  * Usage: npx tsx scripts/identity-calibration.ts [builds]
  */
-import { isDraftComplete, selectCandidate, startDraft } from "../src/lib/draft/session";
+import { isAlreadyUsed, isDraftComplete, selectCandidate, startDraft } from "../src/lib/draft/session";
 import { buildFullAttributeRatings } from "../src/lib/simulation/derivedStats";
 import { createRng } from "../src/lib/simulation/rng";
 
@@ -23,10 +23,10 @@ for (let i = 0; i < N; i++) {
   let state = startDraft(rng);
   while (!isDraftComplete(state)) {
     const attribute = state.attributeOrder[state.roundIndex]! as keyof typeof state.selections;
-    const candidates = [...state.currentCandidates!];
+    const candidates = state.currentCandidates!.filter((f) => !isAlreadyUsed(state, f.id));
     const best = candidates.reduce((a, b) => ((b as never)[attribute] > (a as never)[attribute] ? b : a));
-    const pick = rng.next() < skill ? best : candidates[Math.floor(rng.next() * 3)]!;
-    state = selectCandidate(state, pick.id, rng);
+    const pick = rng.next() < skill ? best : candidates[Math.floor(rng.next() * candidates.length)]!;
+    state = selectCandidate(state, pick.id);
   }
   const selections: Record<string, { sourceFighter: unknown }> = {};
   for (const [k, f] of state.selections) selections[k] = { sourceFighter: f };

@@ -1,38 +1,44 @@
 import { VISIBLE_ATTRIBUTES } from "@/lib/data/types";
 import type { SourceFighter, VisibleAttribute } from "@/lib/data/types";
 import type { AttributeSelection, FighterSnapshot, RNG } from "@/lib/simulation/types";
-import { generateCandidates } from "./candidates";
+import { generateDraftPlan, OFFERS_PER_ROUND, type DraftPlan } from "./plan";
 import { DRAFT_POOL } from "./draftPool";
 
 /** Locked in LOCKED_DECISIONS.md > Decision 2: a single pool of 2
  * rerolls usable at any point across the whole draft, not per-round. */
-const TOTAL_REROLLS = 2;
+const TOTAL_REROLLS = OFFERS_PER_ROUND - 1;
 
-/**
- * Immutable draft state. Every action below (startDraft/reroll/
- * selectCandidate) is a pure function: (state, ...) -> new state. No
- * method mutates its input — the same pattern as the simulation
- * engine's ExchangeContext, chosen for the same reason: it makes every
- * transition independently testable and trivially replayable.
- *
- * `rng` is deliberately NOT stored on this type. It's a stream, not
- * data — storing it would make DraftSessionState look comparable/
- * serializable when part of it secretly wouldn't be. Callers thread an
- * RNG through each action explicitly, same as simulateFight threads it
- * through each exchange.
- */
+type CandidateTrio = readonly [SourceFighter, SourceFighter, SourceFighter];
+
 /** What was on the board in one round and which fighter was taken. Kept so
  * the reveal can grade your calls against the cards you were actually shown. */
 export interface BoardRecord {
   readonly attribute: VisibleAttribute;
-  readonly cards: readonly [SourceFighter, SourceFighter, SourceFighter];
+  /** The board the pick was made from (after any rerolls that round). */
+  readonly cards: CandidateTrio;
   readonly pickedId: number;
+  /** 0 = base board, 1-2 = rerolled offers. */
+  readonly offerIndex: number;
 }
 
+/**
+ * Immutable draft state. Every action below (startDraft/reroll/
+ * selectCandidate) is a pure function: (state, ...) -> new state. No
+ * method mutates its input, so every transition is independently testable
+ * and trivially replayable.
+ *
+ * Every board comes from `plan`, fixed when the draft starts (see plan.ts),
+ * so the actions need no RNG: the same plan and the same choices always
+ * give the same draft. Boards can repeat a fighter you already used; such
+ * cards stay on the board and cannot be picked (see `isAlreadyUsed`).
+ */
 export interface DraftSessionState {
+  readonly plan: DraftPlan;
   readonly attributeOrder: readonly VisibleAttribute[];
   readonly roundIndex: number; // index into attributeOrder; === length means complete
-  readonly currentCandidates: readonly [SourceFighter, SourceFighter, SourceFighter] | null;
+  /** Which of the round's planned offers is showing: 0 base, 1-2 rerolls. */
+  readonly offerIndex: number;
+  readonly currentCandidates: CandidateTrio | null;
   readonly selections: ReadonlyMap<VisibleAttribute, SourceFighter>;
   readonly usedFighterIds: ReadonlySet<number>;
   readonly rerollsRemaining: number;
@@ -40,56 +46,49 @@ export interface DraftSessionState {
   readonly history: readonly BoardRecord[];
 }
 
-/**
- * generateCandidates builds each slot from a different tier mix (slot 1
- * leans elite, slot 3 carries the wildcard chance), so its output order
- * leaks quality. With ratings hidden, the whole point is choosing by
- * knowledge, so what players see is shuffled: the mix of quality stays
- * the same, but position no longer tells you which card is strongest.
- */
-type CandidateTrio = readonly [SourceFighter, SourceFighter, SourceFighter];
+const fighterIndexes = new WeakMap<readonly SourceFighter[], Map<number, SourceFighter>>();
 
-function shuffleCandidates(candidates: CandidateTrio, rng: RNG): CandidateTrio {
-  const shuffled = [...candidates];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(rng.next() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
+function fighterById(pool: readonly SourceFighter[], id: number): SourceFighter {
+  let index = fighterIndexes.get(pool);
+  if (!index) {
+    index = new Map(pool.map((f) => [f.id, f]));
+    fighterIndexes.set(pool, index);
   }
-  return shuffled as unknown as CandidateTrio;
+  const fighter = index.get(id);
+  if (!fighter) throw new Error(`Fighter id ${id} is in the draft plan but not in the pool`);
+  return fighter;
+}
+
+function offerFor(
+  plan: DraftPlan,
+  roundIndex: number,
+  offerIndex: number,
+  pool: readonly SourceFighter[]
+): CandidateTrio {
+  const ids = plan.rounds[roundIndex]!.offers[offerIndex]!;
+  return ids.map((id) => fighterById(pool, id)) as unknown as CandidateTrio;
 }
 
 export function isDraftComplete(state: DraftSessionState): boolean {
   return state.roundIndex >= state.attributeOrder.length;
 }
 
-/** Fisher-Yates shuffle, driven by the same seeded RNG as everything
- * else — this is what "randomized draft order" (DESIGN_FINAL.md >
- * Draft Order) actually means: not fixed per game, deterministic per
- * seed. */
-function shuffleAttributes(rng: RNG): VisibleAttribute[] {
-  const order = [...VISIBLE_ATTRIBUTES];
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(rng.next() * (i + 1));
-    const temp = order[i]!;
-    order[i] = order[j]!;
-    order[j] = temp;
-  }
-  return order;
+/** A card showing a fighter this draft already used: visible, not pickable. */
+export function isAlreadyUsed(state: DraftSessionState, fighterId: number): boolean {
+  return state.usedFighterIds.has(fighterId);
 }
 
-export function startDraft(
-  rng: RNG,
+/** Starts a draft on a given plan (multiplayer, shared seeds, tests). */
+export function startDraftFromPlan(
+  plan: DraftPlan,
   pool: readonly SourceFighter[] = DRAFT_POOL
 ): DraftSessionState {
-  const attributeOrder = shuffleAttributes(rng);
-  const currentCandidates = shuffleCandidates(
-    generateCandidates(attributeOrder[0]!, new Set(), rng, pool),
-    rng
-  );
   return {
-    attributeOrder,
+    plan,
+    attributeOrder: plan.attributeOrder,
     roundIndex: 0,
-    currentCandidates,
+    offerIndex: 0,
+    currentCandidates: offerFor(plan, 0, 0, pool),
     selections: new Map(),
     usedFighterIds: new Set(),
     rerollsRemaining: TOTAL_REROLLS,
@@ -97,12 +96,19 @@ export function startDraft(
   };
 }
 
-/** Refreshes the current round's 3 candidates. Does not touch
- * selections or usedFighterIds — nothing was picked, so nothing was
- * spent. */
+/** Starts a draft on a fresh plan whose seed is drawn from `rng`. */
+export function startDraft(
+  rng: RNG,
+  pool: readonly SourceFighter[] = DRAFT_POOL
+): DraftSessionState {
+  const seed = Math.floor(rng.next() * 2 ** 31);
+  return startDraftFromPlan(generateDraftPlan(seed, pool), pool);
+}
+
+/** Shows the round's next planned offer. Does not touch selections or
+ * usedFighterIds: nothing was picked, so nothing was spent. */
 export function reroll(
   state: DraftSessionState,
-  rng: RNG,
   pool: readonly SourceFighter[] = DRAFT_POOL
 ): DraftSessionState {
   if (isDraftComplete(state)) {
@@ -111,37 +117,23 @@ export function reroll(
   if (state.rerollsRemaining <= 0) {
     throw new Error("No rerolls remaining");
   }
-  const attribute = state.attributeOrder[state.roundIndex]!;
-  // A reroll should show new names, so also exclude the three being
-  // thrown away. If that ever leaves too few fighters for the attribute
-  // (not expected with this pool), fall back to only excluding picks.
-  const excluded = new Set(state.usedFighterIds);
-  for (const candidate of state.currentCandidates ?? []) excluded.add(candidate.id);
-  let generated: ReturnType<typeof generateCandidates>;
-  try {
-    generated = generateCandidates(attribute, excluded, rng, pool);
-  } catch {
-    generated = generateCandidates(attribute, state.usedFighterIds, rng, pool);
-  }
-  const currentCandidates = shuffleCandidates(generated, rng);
+  const offerIndex = state.offerIndex + 1;
   return {
     ...state,
-    currentCandidates,
+    offerIndex,
+    currentCandidates: offerFor(state.plan, state.roundIndex, offerIndex, pool),
     rerollsRemaining: state.rerollsRemaining - 1,
   };
 }
 
 /**
- * Locks in one of the 3 currently-displayed candidates for the current
- * attribute, then either advances to the next round (generating its
- * candidates, excluding every fighter used so far — this is where the
- * one-per-fighter constraint is actually enforced) or completes the
- * draft if this was the last attribute.
+ * Locks in one of the 3 current cards for the current attribute, then
+ * either advances to the next round's base board or completes the draft.
+ * A fighter already used for another attribute cannot be picked again.
  */
 export function selectCandidate(
   state: DraftSessionState,
   fighterId: number,
-  rng: RNG,
   pool: readonly SourceFighter[] = DRAFT_POOL
 ): DraftSessionState {
   if (isDraftComplete(state)) {
@@ -154,6 +146,9 @@ export function selectCandidate(
         `(${state.currentCandidates?.map((f) => f.id).join(", ")})`
     );
   }
+  if (isAlreadyUsed(state, fighterId)) {
+    throw new Error(`${chosen.name} is already used in this draft`);
+  }
 
   const attribute = state.attributeOrder[state.roundIndex]!;
   const selections = new Map(state.selections);
@@ -163,21 +158,20 @@ export function selectCandidate(
 
   const roundIndex = state.roundIndex + 1;
   const complete = roundIndex >= state.attributeOrder.length;
-  const currentCandidates = complete
-    ? null
-    : shuffleCandidates(
-        generateCandidates(state.attributeOrder[roundIndex]!, usedFighterIds, rng, pool),
-        rng
-      );
 
   return {
+    plan: state.plan,
     attributeOrder: state.attributeOrder,
     roundIndex,
-    currentCandidates,
+    offerIndex: 0,
+    currentCandidates: complete ? null : offerFor(state.plan, roundIndex, 0, pool),
     selections,
     usedFighterIds,
     rerollsRemaining: state.rerollsRemaining,
-    history: [...state.history, { attribute, cards: state.currentCandidates!, pickedId: fighterId }],
+    history: [
+      ...state.history,
+      { attribute, cards: state.currentCandidates!, pickedId: fighterId, offerIndex: state.offerIndex },
+    ],
   };
 }
 

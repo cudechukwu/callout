@@ -3,6 +3,7 @@ import { VISIBLE_ATTRIBUTES } from "@/lib/data/types";
 import { createRng } from "@/lib/simulation/rng";
 import { simulateFight } from "@/lib/simulation/engine";
 import {
+  isAlreadyUsed,
   isDraftComplete,
   reroll,
   selectCandidate,
@@ -11,13 +12,12 @@ import {
   type DraftSessionState,
 } from "./session";
 
-/** Plays a full 8-round draft, always picking the first of the 3
- * candidates shown, using a single threaded RNG. */
+/** Plays a full 8-round draft, always picking the first card it can take. */
 function playFullDraft(rng: ReturnType<typeof createRng>): DraftSessionState {
   let state = startDraft(rng);
   while (!isDraftComplete(state)) {
-    const pick = state.currentCandidates![0];
-    state = selectCandidate(state, pick.id, rng);
+    const pick = state.currentCandidates!.find((f) => !isAlreadyUsed(state, f.id))!;
+    state = selectCandidate(state, pick.id);
   }
   return state;
 }
@@ -83,7 +83,7 @@ describe("selectCandidate", () => {
     const attribute = state.attributeOrder[0]!;
     const pick = state.currentCandidates![1];
 
-    const next = selectCandidate(state, pick.id, rng);
+    const next = selectCandidate(state, pick.id);
 
     expect(next.roundIndex).toBe(1);
     expect(next.selections.get(attribute)).toEqual(pick);
@@ -94,14 +94,14 @@ describe("selectCandidate", () => {
   it("throws if the fighter id isn't one of the current candidates", () => {
     const rng = createRng(1);
     const state = startDraft(rng);
-    expect(() => selectCandidate(state, -999999, rng)).toThrow(/not one of the current candidates/);
+    expect(() => selectCandidate(state, -999999)).toThrow(/not one of the current candidates/);
   });
 
   it("throws if called on an already-complete draft", () => {
     const rng = createRng(1);
     const finished = playFullDraft(rng);
     expect(isDraftComplete(finished)).toBe(true);
-    expect(() => selectCandidate(finished, 1, rng)).toThrow(/already complete/);
+    expect(() => selectCandidate(finished, 1)).toThrow(/already complete/);
   });
 
   it("never lets the same fighter be selected twice across a full draft", () => {
@@ -125,7 +125,7 @@ describe("reroll", () => {
     const state = startDraft(rng);
     const before = state.currentCandidates!.map((f) => f.id);
 
-    const rerolled = reroll(state, rng);
+    const rerolled = reroll(state);
 
     expect(rerolled.rerollsRemaining).toBe(1);
     expect(rerolled.selections.size).toBe(0);
@@ -140,27 +140,29 @@ describe("reroll", () => {
   it("throws once rerolls are exhausted", () => {
     const rng = createRng(5);
     let state = startDraft(rng);
-    state = reroll(state, rng);
-    state = reroll(state, rng);
+    state = reroll(state);
+    state = reroll(state);
     expect(state.rerollsRemaining).toBe(0);
-    expect(() => reroll(state, rng)).toThrow(/no rerolls remaining/i);
+    expect(() => reroll(state)).toThrow(/no rerolls remaining/i);
   });
 
   it("throws if called on an already-complete draft", () => {
     const rng = createRng(1);
     const finished = playFullDraft(rng);
-    expect(() => reroll(finished, rng)).toThrow(/already complete/);
+    expect(() => reroll(finished)).toThrow(/already complete/);
   });
 
   it("rerolling then selecting still enforces one-per-fighter correctly", () => {
     const rng = createRng(9);
     let state = startDraft(rng);
-    state = reroll(state, rng);
+    state = reroll(state);
     const pick = state.currentCandidates![0]!;
-    state = selectCandidate(state, pick.id, rng);
+    state = selectCandidate(state, pick.id);
     expect(state.usedFighterIds.has(pick.id)).toBe(true);
-    // The rerolled-away original candidates must never appear again.
-    expect(state.currentCandidates!.every((f) => f.id !== pick.id)).toBe(true);
+    // If the picked fighter comes round again he shows, but as used.
+    for (const fighter of state.currentCandidates!) {
+      if (fighter.id === pick.id) expect(isAlreadyUsed(state, fighter.id)).toBe(true);
+    }
   });
 });
 
@@ -170,7 +172,7 @@ describe("reroll — fresh candidates", () => {
       const rng = createRng(seed);
       const state = startDraft(rng);
       const discarded = new Set(state.currentCandidates!.map((f) => f.id));
-      const rerolled = reroll(state, rng);
+      const rerolled = reroll(state);
       for (const fighter of rerolled.currentCandidates!) {
         expect(discarded.has(fighter.id)).toBe(false);
       }
