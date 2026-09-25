@@ -6,15 +6,24 @@ import { ATTRIBUTE_BLURB, ATTRIBUTE_SHORT, ratingToDisplay } from "@/lib/ratings
 import { isAlreadyUsed, type DraftSessionState } from "@/lib/draft/session";
 import { Avatar } from "@/components/Avatar";
 
+/** Just what the board needs, so a challenge draft (built from the server's
+ * view) can use the same screen as a local draft. */
+export type DraftBoardState = Pick<
+  DraftSessionState,
+  "attributeOrder" | "roundIndex" | "currentCandidates" | "selections" | "usedFighterIds" | "rerollsRemaining"
+>;
+
 interface DraftScreenProps {
-  state: DraftSessionState;
+  state: DraftBoardState;
   /** Fighter id whose pick is locking in (the card animates, input pauses). */
   pendingId: number | null;
   onPick: (fighterId: number) => void;
   onReroll: () => void;
+  /** Extra status above the reroll button (a challenge shows the opponent here). */
+  aside?: React.ReactNode;
 }
 
-export function DraftScreen({ state, pendingId, onPick, onReroll }: DraftScreenProps) {
+export function DraftScreen({ state, pendingId, onPick, onReroll, aside }: DraftScreenProps) {
   const attribute = state.attributeOrder[state.roundIndex]!;
   const candidates = state.currentCandidates!;
   const total = state.attributeOrder.length;
@@ -32,13 +41,16 @@ export function DraftScreen({ state, pendingId, onPick, onReroll }: DraftScreenP
           </h1>
           <p className="mt-1.5 max-w-md text-sm text-chalk">{ATTRIBUTE_BLURB[attribute]}</p>
         </div>
-        <button
-          onClick={onReroll}
-          disabled={state.rerollsRemaining === 0 || busy}
-          className="shrink-0 pb-0.5 text-sm font-medium text-bone/80 underline decoration-bone/30 underline-offset-4 transition-colors hover:text-bone disabled:text-chalk-faint disabled:no-underline"
-        >
-          Reroll ({state.rerollsRemaining} left)
-        </button>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {aside}
+          <button
+            onClick={onReroll}
+            disabled={state.rerollsRemaining === 0 || busy}
+            className="pb-0.5 text-sm font-medium text-bone/80 underline decoration-bone/30 underline-offset-4 transition-colors hover:text-bone disabled:text-chalk-faint disabled:no-underline"
+          >
+            Reroll ({state.rerollsRemaining} left)
+          </button>
+        </div>
       </div>
 
       {/* The cards and the pick rail share the height left over and sit

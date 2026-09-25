@@ -74,7 +74,7 @@ export function isDraftComplete(state: DraftSessionState): boolean {
 }
 
 /** A card showing a fighter this draft already used: visible, not pickable. */
-export function isAlreadyUsed(state: DraftSessionState, fighterId: number): boolean {
+export function isAlreadyUsed(state: Pick<DraftSessionState, "usedFighterIds">, fighterId: number): boolean {
   return state.usedFighterIds.has(fighterId);
 }
 

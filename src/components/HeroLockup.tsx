@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { primaryButton } from "@/components/ui";
+import { primaryButton, secondaryButton } from "@/components/ui";
 import { DRAFT_POOL } from "@/lib/draft/draftPool";
 
 const STATS = [
@@ -35,6 +35,9 @@ export function HeroLockup({ titleStyle }: HeroLockupProps) {
       <div className="animate-rise-in mt-6 flex flex-wrap items-center gap-5" style={{ animationDelay: "280ms" }}>
         <Link href="/draft" className={primaryButton}>
           Build your fighter
+        </Link>
+        <Link href="/challenge" className={secondaryButton}>
+          Challenge a friend
         </Link>
       </div>
 
