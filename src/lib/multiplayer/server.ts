@@ -75,13 +75,19 @@ function maybe<R extends Result>(result: R): NonNullable<R["data"]> | null {
   return (result.data ?? null) as NonNullable<R["data"]> | null;
 }
 
-/** The caller's user id, from the access token their browser sends. */
-export async function requireUserId(request: Request): Promise<string> {
+export interface Caller {
+  readonly id: string;
+  /** A guest (anonymous) session rather than a real account. */
+  readonly guest: boolean;
+}
+
+/** The caller, from the access token their browser sends. */
+export async function requireUser(request: Request): Promise<Caller> {
   const token = request.headers.get("authorization")?.replace(/^Bearer /i, "");
   if (!token) throw new MpError(401, "unauthenticated", "Sign in first");
   const { data, error } = await admin().auth.getUser(token);
   if (error || !data.user) throw new MpError(401, "unauthenticated", "Session expired");
-  return data.user.id;
+  return { id: data.user.id, guest: Boolean(data.user.is_anonymous) };
 }
 
 function cleanName(raw: unknown): string {
@@ -120,7 +126,10 @@ async function addDrafter(roundId: string, userId: string) {
   check(await admin().from("draft_builds").upsert({ draft_round_id: roundId, user_id: userId }, { ignoreDuplicates: true }));
 }
 
-export async function createSeries(userId: string, rawName: unknown) {
+/** Sending a challenge needs an account; accepting one only needs a name. */
+export async function createSeries(caller: Caller, rawName: unknown) {
+  if (caller.guest) throw new MpError(403, "account_required", "Create an account to send a challenge");
+  const userId = caller.id;
   const name = cleanName(rawName);
   const inviteToken = randomBytes(16).toString("base64url");
   const series = check(

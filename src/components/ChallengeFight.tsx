@@ -13,6 +13,7 @@ import { FightViewer } from "@/components/FightViewer";
 import { TaleOfTape } from "@/components/TaleOfTape";
 import { primaryButton, secondaryButton } from "@/components/ui";
 import { pictureSrc } from "@/lib/profilePictures";
+import { useAccount } from "@/lib/account";
 
 const POOL_BY_ID = new Map(DRAFT_POOL.map((f) => [f.id, f]));
 
@@ -66,6 +67,7 @@ function recordLine(wins: number, losses: number, opponentName: string): string 
 export function ChallengeFight({ view, reveal, busy, onRequest, onRespond }: ChallengeFightProps) {
   const { fight } = reveal;
   const [stage, setStage] = useState<Stage>(() => (hasWatched(fight.id) ? "result" : "tape"));
+  const account = useAccount();
   const opponentName = view.opponent?.name ?? "Opponent";
 
   const mine = useMemo(() => selectionsOf(view.picks), [view.picks]);
@@ -134,6 +136,7 @@ export function ChallengeFight({ view, reveal, busy, onRequest, onRespond }: Cha
 
   const { rivalry } = view;
   const pending = rivalry.pending;
+  const guest = !account.loading && !account.signedIn;
   const quietLink =
     "text-sm font-medium text-chalk underline decoration-chalk/40 underline-offset-4 transition-colors hover:text-bone";
 
@@ -188,6 +191,20 @@ export function ChallengeFight({ view, reveal, busy, onRequest, onRespond }: Cha
                 </button>
               </div>
             </>
+          )}
+          {guest && (
+            <Link
+              href={`/account?next=${encodeURIComponent(`/c/${view.inviteToken}`)}`}
+              className="cut-sm mt-5 flex items-center justify-between gap-4 border border-line/70 bg-panel/60 px-4 py-3 transition-colors hover:border-bone/60"
+            >
+              <span>
+                <span className="block font-display font-semibold tracking-[0.07em] uppercase">Save your record</span>
+                <span className="text-sm text-chalk">Create an account to keep this rivalry on any device.</span>
+              </span>
+              <span aria-hidden="true" className="text-xl">
+                &rarr;
+              </span>
+            </Link>
           )}
           <div className="mt-5 flex justify-center gap-6">
             {pending && (

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { primaryButton } from "@/components/ui";
 import { saveProfile, signIn, signOut, signUp, useAccount, type Profile } from "@/lib/account";
@@ -13,8 +14,30 @@ const label = "mt-4 block text-sm text-chalk";
 const title =
   "font-display text-[clamp(1.9rem,6vw,2.75rem)] leading-none font-semibold tracking-[0.07em] uppercase";
 
+/** Only same-site paths, so ?next= can't send anyone off the site. */
+function safeNext(raw: string | null): string | null {
+  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : null;
+}
+
 export default function AccountPage() {
+  return (
+    <Suspense>
+      <AccountScreen />
+    </Suspense>
+  );
+}
+
+function AccountScreen() {
   const account = useAccount();
+  const router = useRouter();
+  const params = useSearchParams();
+  const next = safeNext(params.get("next"));
+  const mode = params.get("mode");
+
+  // Sent here to sign in first (e.g. to send a challenge): go back once done.
+  useEffect(() => {
+    if (!account.loading && account.signedIn && next) router.replace(next);
+  }, [account.loading, account.signedIn, next, router]);
 
   if (account.loading) {
     return (
@@ -23,18 +46,19 @@ export default function AccountPage() {
       </main>
     );
   }
+  if (account.signedIn && next) return null;
   return account.signedIn && account.session ? (
     <ProfileEditor
       email={account.session.user.email ?? ""}
       profile={account.profile ?? { displayName: "", avatarKey: null }}
     />
   ) : (
-    <AuthForm guest={Boolean(account.session?.user.is_anonymous)} />
+    <AuthForm guest={Boolean(account.session?.user.is_anonymous)} startWith={mode === "signin" ? "signin" : "create"} />
   );
 }
 
-function AuthForm({ guest }: { guest: boolean }) {
-  const [mode, setMode] = useState<"create" | "signin">("create");
+function AuthForm({ guest, startWith }: { guest: boolean; startWith: "create" | "signin" }) {
+  const [mode, setMode] = useState<"create" | "signin">(startWith);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

@@ -7,7 +7,7 @@ import {
   lookupInvite,
   MpError,
   requestRivalry,
-  requireUserId,
+  requireUser,
   respondRivalry,
 } from "@/lib/multiplayer/server";
 
@@ -18,11 +18,12 @@ import {
 export async function POST(request: Request, context: { params: Promise<{ action: string }> }) {
   const { action } = await context.params;
   try {
-    const userId = await requireUserId(request);
+    const caller = await requireUser(request);
+    const userId = caller.id;
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     switch (action) {
       case "create":
-        return Response.json(await createSeries(userId, body.name));
+        return Response.json(await createSeries(caller, body.name));
       case "invite":
         return Response.json(await lookupInvite(userId, body.token));
       case "join":
