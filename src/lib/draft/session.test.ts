@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { VISIBLE_ATTRIBUTES } from "@/lib/data/types";
 import { createRng } from "@/lib/simulation/rng";
 import { simulateFight } from "@/lib/simulation/engine";
+import { DRAFT_POOL } from "./draftPool";
+import { classifyTier } from "./tiers";
 import {
   isAlreadyUsed,
   isDraftComplete,
@@ -177,6 +179,42 @@ describe("reroll — fresh candidates", () => {
         expect(discarded.has(fighter.id)).toBe(false);
       }
     }
+  });
+});
+
+describe("single-player never shows a fighter you already used", () => {
+  it("swaps used fighters for unused ones of the same tier, across rerolls", () => {
+    let swaps = 0;
+    for (let seed = 0; seed < 400; seed++) {
+      const rng = createRng(seed);
+      let state = startDraft(rng);
+      expect(state.solo).toBe(true);
+      while (!isDraftComplete(state)) {
+        if (state.rerollsRemaining > 0 && rng.next() < 0.25) state = reroll(state);
+        const cards = state.currentCandidates!;
+        expect(new Set(cards.map((f) => f.id)).size).toBe(3);
+        for (const card of cards) expect(isAlreadyUsed(state, card.id), `seed ${seed}`).toBe(false);
+        // Compare with the plan's board to check replacements keep the tier.
+        const round = state.plan.rounds[state.roundIndex]!;
+        const planned = round.offers[state.offerIndex]!;
+        planned.forEach((id, i) => {
+          if (id !== cards[i]!.id) {
+            swaps++;
+            const attribute = round.attribute;
+            const plannedFighter = DRAFT_POOL.find((f) => f.id === id)!;
+            expect(classifyTier(cards[i]![attribute])).toBe(classifyTier(plannedFighter[attribute]));
+          }
+        });
+        state = selectCandidate(state, cards[Math.floor(rng.next() * 3)]!.id);
+      }
+    }
+    expect(swaps).toBeGreaterThan(100); // repeats do come up, and get swapped
+  });
+
+  it("is deterministic: the same draft shows the same swapped boards", () => {
+    const a = playFullDraft(createRng(21));
+    const b = playFullDraft(createRng(21));
+    expect(a.history).toEqual(b.history);
   });
 });
 

@@ -12,18 +12,28 @@ import { DRAFT_POOL } from "./draftPool";
  * same reroll offers (MULTIPLAYER_DESIGN.md > The draft plan).
  *
  * Because boards no longer skip fighters you already used, a fighter can
- * come round again; the draft shows him as "Already used". The fresh-card
- * rule below guarantees that never leaves a board with nothing to take.
+ * come round again; a challenge shows him as "Already used". The fresh-card
+ * rule below keeps that to at most one card per board, so there is always
+ * a real choice. (Single-player swaps used fighters out instead; see
+ * session.ts.)
  *
  * Bump DRAFT_VERSION whenever this algorithm changes what a seed produces:
  * stored multiplayer plans record the version they were generated with.
  */
-export const DRAFT_VERSION = 1;
+export const DRAFT_VERSION = 2;
+
+/**
+ * Fighters on each offer that no earlier round showed. Nobody can have used
+ * them yet, so with two, a board never has more than one greyed-out card.
+ * (Version 1 required one, which allowed a board with a single choice.)
+ */
+const MIN_FRESH = 2;
 
 /** Base board plus one offer per possible reroll. */
 export const OFFERS_PER_ROUND = 3;
 
-/** Plenty: measured retries average 0.12 per offer, worst 10 in 72,000. */
+/** Measured: 1.8 retries per offer on average; about 1 offer in 8,000
+ * needs the fallback below. */
 const MAX_ATTEMPTS = 200;
 
 export type OfferIds = readonly [number, number, number];
@@ -54,10 +64,10 @@ function shuffle<T>(items: readonly T[], rng: RNG): T[] {
  * none shown earlier in this round (a reroll shows new names), in shuffled
  * display order so position doesn't leak quality.
  *
- * Fresh-card rule: at least one card must be a fighter no earlier round
- * showed. Nobody can have used that fighter yet, so every board always has
- * a card every player can take. Retries are seeded, so the result is still
- * a pure function of the seed.
+ * Fresh-card rule: at least MIN_FRESH cards must be fighters no earlier
+ * round showed. Nobody can have used them yet, so every board always offers
+ * every player a real choice. Retries are seeded, so the result is still a
+ * pure function of the seed.
  */
 function dealOffer(
   seed: string,
@@ -71,17 +81,20 @@ function dealOffer(
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const rng = createRng(`${seed}:${round}:${offer}:${attempt}`);
     const cards = generateCandidates(attribute, shownThisRound, rng, pool);
-    if (cards.some((card) => !shownBefore.has(card.id))) {
+    if (cards.filter((card) => !shownBefore.has(card.id)).length >= MIN_FRESH) {
       return shuffle(cards.map((card) => card.id), rng) as unknown as OfferIds;
     }
   }
-  // Not reached in practice. If it ever is, swap one card for any fresh
-  // fighter so the guarantee still holds.
+  // Rare: swap repeated cards for fighters not seen yet until the rule holds.
   const rng = createRng(`${seed}:${round}:${offer}:fallback`);
   const cards = generateCandidates(attribute, shownThisRound, rng, pool).map((card) => card.id);
-  const fresh = pool.filter((f) => !shownBefore.has(f.id) && !shownThisRound.has(f.id) && !cards.includes(f.id));
-  if (fresh.length === 0) throw new Error("Draft pool too small for the fresh-card rule");
-  cards[2] = fresh[Math.floor(rng.next() * fresh.length)]!.id;
+  for (let i = 0; i < cards.length; i++) {
+    if (cards.filter((id) => !shownBefore.has(id)).length >= MIN_FRESH) break;
+    if (!shownBefore.has(cards[i]!)) continue;
+    const fresh = pool.filter((f) => !shownBefore.has(f.id) && !shownThisRound.has(f.id) && !cards.includes(f.id));
+    if (fresh.length === 0) throw new Error("Draft pool too small for the fresh-card rule");
+    cards[i] = fresh[Math.floor(rng.next() * fresh.length)]!.id;
+  }
   return shuffle(cards, rng) as unknown as OfferIds;
 }
 

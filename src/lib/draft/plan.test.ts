@@ -42,12 +42,12 @@ describe("generateDraftPlan", () => {
     }
   });
 
-  it("fresh-card rule: every offer has a fighter no earlier round showed", () => {
+  it("fresh-card rule: every offer has two fighters no earlier round showed", () => {
     for (let seed = 0; seed < 2000; seed++) {
       const shownBefore = new Set<number>();
       for (const round of generateDraftPlan(seed).rounds) {
         for (const offer of round.offers) {
-          expect(offer.some((id) => !shownBefore.has(id)), `seed ${seed}`).toBe(true);
+          expect(offer.filter((id) => !shownBefore.has(id)).length, `seed ${seed}`).toBeGreaterThanOrEqual(2);
         }
         round.offers.flat().forEach((id) => shownBefore.add(id));
       }
@@ -92,12 +92,12 @@ function randomPath(plan: ReturnType<typeof generateDraftPlan>, pathSeed: number
 }
 
 describe("drafting on a plan", () => {
-  it("no legal path ever reaches a board with nothing to pick", () => {
+  it("no legal path ever reaches a board with fewer than two choices", () => {
     for (let seed = 0; seed < 400; seed++) {
       const plan = generateDraftPlan(seed);
       for (let path = 0; path < 10; path++) {
         const { state, minSelectable } = randomPath(plan, seed * 10 + path);
-        expect(minSelectable, `seed ${seed} path ${path}`).toBeGreaterThanOrEqual(1);
+        expect(minSelectable, `seed ${seed} path ${path}`).toBeGreaterThanOrEqual(2);
         expect(isDraftComplete(state)).toBe(true);
       }
     }

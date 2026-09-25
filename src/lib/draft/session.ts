@@ -2,7 +2,9 @@ import { VISIBLE_ATTRIBUTES } from "@/lib/data/types";
 import type { SourceFighter, VisibleAttribute } from "@/lib/data/types";
 import type { AttributeSelection, FighterSnapshot, RNG } from "@/lib/simulation/types";
 import { generateDraftPlan, OFFERS_PER_ROUND, type DraftPlan } from "./plan";
-import { DRAFT_POOL } from "./draftPool";
+import { DRAFT_POOL, poolByTier } from "./draftPool";
+import { classifyTier, type DraftTier } from "./tiers";
+import { createRng } from "@/lib/simulation/rng";
 
 /** Locked in LOCKED_DECISIONS.md > Decision 2: a single pool of 2
  * rerolls usable at any point across the whole draft, not per-round. */
@@ -34,6 +36,13 @@ export interface BoardRecord {
  */
 export interface DraftSessionState {
   readonly plan: DraftPlan;
+  /**
+   * Single-player: a fighter you already used is swapped out of any board
+   * for a fresh one of the same tier, so you never see "Already used".
+   * Challenges keep the plan's boards exactly (both players must see the
+   * same cards), so there a used fighter shows greyed out.
+   */
+  readonly solo: boolean;
   readonly attributeOrder: readonly VisibleAttribute[];
   readonly roundIndex: number; // index into attributeOrder; === length means complete
   /** Which of the round's planned offers is showing: 0 base, 1-2 rerolls. */
@@ -59,14 +68,47 @@ function fighterById(pool: readonly SourceFighter[], id: number): SourceFighter 
   return fighter;
 }
 
+/** Nearest tiers first, for a replacement when a tier has no one left. */
+const NEAREST_TIERS: Record<DraftTier, readonly DraftTier[]> = {
+  elite: ["elite", "strong", "solid", "wildcard"],
+  strong: ["strong", "elite", "solid", "wildcard"],
+  solid: ["solid", "strong", "wildcard", "elite"],
+  wildcard: ["wildcard", "solid", "strong", "elite"],
+};
+
 function offerFor(
   plan: DraftPlan,
   roundIndex: number,
   offerIndex: number,
-  pool: readonly SourceFighter[]
+  pool: readonly SourceFighter[],
+  solo = false,
+  used: ReadonlySet<number> = new Set()
 ): CandidateTrio {
-  const ids = plan.rounds[roundIndex]!.offers[offerIndex]!;
-  return ids.map((id) => fighterById(pool, id)) as unknown as CandidateTrio;
+  const round = plan.rounds[roundIndex]!;
+  const cards = round.offers[offerIndex]!.map((id) => fighterById(pool, id));
+  if (!solo || !cards.some((card) => used.has(card.id))) return cards as unknown as CandidateTrio;
+
+  // Swap each used fighter for one of the same tier that hasn't been used,
+  // isn't on this board and isn't in this round's other offers (a reroll
+  // should still show new names). Seeded by the plan and the picks so far,
+  // so the same draft always shows the same board.
+  const attribute = round.attribute;
+  const tiers = poolByTier(attribute, pool);
+  const taken = new Set<number>([...used, ...round.offers.flat()]);
+  const rng = createRng(`${plan.seed}:solo:${roundIndex}:${offerIndex}:${[...used].sort((a, b) => a - b).join(",")}`);
+  const swapped = cards.map((card) => {
+    if (!used.has(card.id)) return card;
+    for (const tier of NEAREST_TIERS[classifyTier(card[attribute])]) {
+      const options = tiers[tier].filter((f) => !taken.has(f.id));
+      if (options.length > 0) {
+        const replacement = options[Math.floor(rng.next() * options.length)]!;
+        taken.add(replacement.id);
+        return replacement;
+      }
+    }
+    return card; // pool exhausted: not reachable with 70 fighters and 8 picks
+  });
+  return swapped as unknown as CandidateTrio;
 }
 
 export function isDraftComplete(state: DraftSessionState): boolean {
@@ -81,10 +123,12 @@ export function isAlreadyUsed(state: Pick<DraftSessionState, "usedFighterIds">, 
 /** Starts a draft on a given plan (multiplayer, shared seeds, tests). */
 export function startDraftFromPlan(
   plan: DraftPlan,
-  pool: readonly SourceFighter[] = DRAFT_POOL
+  pool: readonly SourceFighter[] = DRAFT_POOL,
+  { solo = false }: { solo?: boolean } = {}
 ): DraftSessionState {
   return {
     plan,
+    solo,
     attributeOrder: plan.attributeOrder,
     roundIndex: 0,
     offerIndex: 0,
@@ -96,13 +140,13 @@ export function startDraftFromPlan(
   };
 }
 
-/** Starts a draft on a fresh plan whose seed is drawn from `rng`. */
+/** Starts a single-player draft (no repeats) on a fresh plan seeded from `rng`. */
 export function startDraft(
   rng: RNG,
   pool: readonly SourceFighter[] = DRAFT_POOL
 ): DraftSessionState {
   const seed = Math.floor(rng.next() * 2 ** 31);
-  return startDraftFromPlan(generateDraftPlan(seed, pool), pool);
+  return startDraftFromPlan(generateDraftPlan(seed, pool), pool, { solo: true });
 }
 
 /** Shows the round's next planned offer. Does not touch selections or
@@ -121,7 +165,7 @@ export function reroll(
   return {
     ...state,
     offerIndex,
-    currentCandidates: offerFor(state.plan, state.roundIndex, offerIndex, pool),
+    currentCandidates: offerFor(state.plan, state.roundIndex, offerIndex, pool, state.solo, state.usedFighterIds),
     rerollsRemaining: state.rerollsRemaining - 1,
   };
 }
@@ -161,10 +205,11 @@ export function selectCandidate(
 
   return {
     plan: state.plan,
+    solo: state.solo,
     attributeOrder: state.attributeOrder,
     roundIndex,
     offerIndex: 0,
-    currentCandidates: complete ? null : offerFor(state.plan, roundIndex, 0, pool),
+    currentCandidates: complete ? null : offerFor(state.plan, roundIndex, 0, pool, state.solo, usedFighterIds),
     selections,
     usedFighterIds,
     rerollsRemaining: state.rerollsRemaining,
