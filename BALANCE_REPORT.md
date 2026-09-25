@@ -349,7 +349,7 @@ Before (flat .08): 98-99 builds won ~68% (13.5 wins), 20-0 ~0.02%. **Target was 
 
 **Power:** not broken. With hidden speed/defense pinned, a Power 5 fighter deals ~18 head damage per fight (second only to Boxing) and wins ~26% of fights by finish vs ~17% for a neutral fighter — its value is finishes/volatility, which raw win rate (55%) doesn't show. Left alone.
 
-**OVR refit:** ten-rating fit R^2 rose 0.79 -> **0.90** (held-out 0.897; plain average of the 8 visible ratings 0.74) — ratings now explain far more of the outcome. Scale re-anchored so the best draft from the whole pool is ~98. Drafters who can see every rating: ~92 median, 95+ about a quarter of the time (hidden-rating players will be well below that). Random drafting centers on ~71.
+**OVR refit:** ten-rating fit R^2 rose 0.79 -> **0.90** (held-out 0.897; plain average of the 8 visible ratings 0.74) — ratings now explain far more of the outcome. Scale re-anchored so the best build reached by greedy picking (best card each round) is ~98. (Correction: this is NOT the true optimum. The exact best 8-fighter assignment, solved by dynamic programming, scores ~106 unclamped and hits the 99 cap; see Correction below.) Drafters who can see every rating: ~92 median, 95+ about a quarter of the time (hidden-rating players will be well below that). Random drafting centers on ~71.
 
 **Known trade-offs:** specialists now beat balanced builds more decisively (Striker vs Balanced 78%); initiative sensitivity also raises Fight IQ and cardio value (both feed initiative); neutral fights are ~2 points more decision-heavy.
 
@@ -391,6 +391,12 @@ Question: does the engine have counter-play, i.e. do some builds systematically 
 | 98-99 | 75.6% | 15.2 | 10.6% | 0.44% / 0.40% |
 
 Effectively unchanged from the 55-fighter pool. Balance stays frozen. The tier mix per skill shifted (e.g. Wrestling elite/strong/solid/wildcard is now 20/10/12/28).
+
+---
+
+## Correction: the true best build
+
+Earlier notes said the "best possible build from the whole pool" scores ~98. That figure came from a greedy sampler (best card each round over random attribute orders), not the exact optimum. Solving the assignment exactly (score is additive across picks, so a subset dynamic programme is exact): the best build from the 317 fighters, and from the 70-fighter pool, is the same set, **~106 on the unclamped OVR scale (shown as 99, the cap)**: St-Pierre (Wrestling), Silva (Submissions), McGregor (Boxing), Adesanya (Kickboxing), Topuria (Power), Edgar (Cardio), Gaethje (Chin), Johnson (Fight IQ). The top 300 builds use only 27 distinct fighters. This does not affect the draft mode (players see 3 cards a round and cannot reach the optimum), but the OVR scale would saturate for any mode with free choice of fighters.
 
 ---
 

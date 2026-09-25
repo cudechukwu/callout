@@ -38,8 +38,9 @@ const WIN_RATE_WEIGHTS: Readonly<Record<keyof FullAttributeRatings, number>> = {
 const OVR_AT_EVEN = 70;
 /**
  * One OVR point per (1 / OVR_PER_WIN_RATE) of win rate against the field.
- * Chosen so the scale is fully used: the best possible draft from the
- * whole pool lands ~98, always taking the best of 3 lands ~90, random
+ * Chosen so the scale is fully used for drafts: the best build reached by
+ * greedy picking (best card each round, random attribute order) lands
+ * ~98, always taking the best of 3 lands ~90, random
  * drafting ~72 — so 95+ is reachable but takes a near-perfect build.
  */
 const OVR_PER_WIN_RATE = 108;
