@@ -17,6 +17,8 @@ const heading = "font-display text-lg font-semibold tracking-[0.07em] uppercase"
 const quietLink =
   "text-sm font-medium text-chalk underline decoration-chalk/40 underline-offset-4 transition-colors hover:text-bone";
 const smallButton = "!px-4 !py-2 !text-sm";
+/** Rivals shown before "Show all": the ones you've fought most. */
+const TOP_RIVALS = 5;
 
 const shortDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -36,6 +38,7 @@ export function ProfileScreen({ email, memberSince, profile }: ProfileScreenProp
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [failed, setFailed] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [allRivals, setAllRivals] = useState(false);
 
   useEffect(() => {
     mp<ProfileStats>("profile")
@@ -137,7 +140,7 @@ export function ProfileScreen({ email, memberSince, profile }: ProfileScreenProp
                 </p>
               ) : (
                 <ul className="mt-3 flex flex-col gap-2">
-                  {(stats?.rivals ?? []).map((rival) => {
+                  {(stats?.rivals ?? []).slice(0, allRivals ? undefined : TOP_RIVALS).map((rival) => {
                     const lead = rival.wins - rival.losses;
                     return (
                       <li key={rival.inviteToken} className="cut-sm flex items-center gap-4 bg-panel/60 p-3 pr-4">
@@ -167,6 +170,11 @@ export function ProfileScreen({ email, memberSince, profile }: ProfileScreenProp
                     );
                   })}
                 </ul>
+              )}
+              {stats && stats.rivals.length > TOP_RIVALS && (
+                <button onClick={() => setAllRivals((v) => !v)} className={`${quietLink} mt-3`}>
+                  {allRivals ? "Show fewer" : `Show all ${stats.rivals.length} rivals`}
+                </button>
               )}
             </section>
 
