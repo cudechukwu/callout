@@ -5,7 +5,7 @@ import { DISPLAY_NAME_MAX } from "@/lib/multiplayer/types";
 import { primaryButton } from "@/components/ui";
 
 interface NameFormProps {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   submitLabel: string;
   onSubmit: (name: string) => Promise<void>;
@@ -19,8 +19,8 @@ export function NameForm({ eyebrow, title, submitLabel, onSubmit }: NameFormProp
 
   return (
     <main className="animate-screen-in mx-auto flex min-h-[calc(100svh-3.5rem)] w-full max-w-md flex-col justify-center px-4 py-10">
-      <p className="text-chalk">{eyebrow}</p>
-      <h1 className="mt-1 font-display text-[clamp(1.9rem,6vw,2.75rem)] leading-none font-semibold tracking-[0.07em] uppercase">
+      {eyebrow && <p className="mb-1 text-chalk">{eyebrow}</p>}
+      <h1 className="font-display text-[clamp(1.9rem,6vw,2.75rem)] leading-none font-semibold tracking-[0.07em] uppercase">
         {title}
       </h1>
       <form

@@ -38,8 +38,7 @@ export default function ChallengePage() {
   if (invite?.status === "open") {
     return (
       <NameForm
-        eyebrow={`${invite.challengerName} challenged you`}
-        title="Same cards. Better build."
+        title={`${invite.challengerName} challenged you`}
         submitLabel="Accept challenge"
         onSubmit={async (name) => {
           const { roundId } = await mp<{ roundId: string }>("join", { token, name });

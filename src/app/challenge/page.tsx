@@ -8,7 +8,6 @@ export default function CreateChallengePage() {
   const router = useRouter();
   return (
     <NameForm
-      eyebrow="Same cards. Hidden picks. One fight."
       title="Challenge a friend"
       submitLabel="Create challenge"
       onSubmit={async (name) => {
