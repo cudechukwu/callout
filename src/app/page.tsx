@@ -23,7 +23,7 @@ const STEPS = [
   },
   {
     title: "Reveal",
-    body: "See your overall rating, your best pick and your weak link.",
+    body: "See your overall rating, your style and what it's built from.",
     names: [],
   },
   {
@@ -126,7 +126,7 @@ export default function LandingPage() {
           The reveal
         </h2>
         <p className="mt-3 mb-8 max-w-lg text-chalk">
-          Every build ends with an overall rating, a best pick and a weak link.
+          Every build ends with an overall rating, a style, and the eight fighters it is built from.
         </p>
         <LandingDemo name="Chiamaka" selections={DEMO_SELECTIONS} overall={computeOverall(DEMO_SELECTIONS)} />
       </section>
