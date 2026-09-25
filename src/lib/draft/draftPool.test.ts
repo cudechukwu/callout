@@ -10,6 +10,24 @@ describe("buildDraftPool", () => {
     expect(a.map((f) => f.id)).toEqual(b.map((f) => f.id));
   });
 
+  it("never cuts a fighter who ties the quality bar (no alphabetical tie-breaks)", () => {
+    for (const attribute of VISIBLE_ATTRIBUTES) {
+      const ratings = SOURCE_FIGHTERS.map((f) => f[attribute]).sort((a, b) => b - a);
+      const bar = ratings[9]!; // the 10th-ranked fighter's rating
+      const inPool = new Set(DRAFT_POOL.map((f) => f.id));
+      for (const fighter of SOURCE_FIGHTERS.filter((f) => f[attribute] >= bar)) {
+        expect(inPool.has(fighter.id), `${fighter.name} (${attribute} ${fighter[attribute]})`).toBe(true);
+      }
+    }
+  });
+
+  it("includes elite names that an alphabetical cut used to drop", () => {
+    const names = new Set(DRAFT_POOL.map((f) => f.name));
+    for (const name of ["Kamaru Usman", "Jon Jones", "Islam Makhachev", "Petr Yan"]) {
+      expect(names.has(name)).toBe(true);
+    }
+  });
+
   it("has no duplicate fighters", () => {
     const ids = DRAFT_POOL.map((f) => f.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -26,14 +44,14 @@ describe("buildDraftPool", () => {
     // Not a hard "must be exactly 70" — the target is "curated,
     // recognizable, small enough for opportunity cost to matter," not
     // a magic number. Loose bounds to catch a real miscalibration
-    // (e.g. TOP_K_PER_ATTRIBUTE set so high the pool basically becomes
+    // (e.g. the cutoff rank set so high the pool basically becomes
     // the full 317) without being brittle to a K tweak of +/-2.
     expect(DRAFT_POOL.length).toBeGreaterThan(40);
     expect(DRAFT_POOL.length).toBeLessThan(100);
   });
 
   it("every attribute has at least one elite-tier fighter in the pool", () => {
-    // Structural sanity check: if this fails, TOP_K_PER_ATTRIBUTE is
+    // Structural sanity check: if this fails, CUTOFF_RANK is
     // too small or something upstream broke — the "elite" slot in
     // candidate generation would have nothing to draw from.
     for (const attribute of VISIBLE_ATTRIBUTES) {

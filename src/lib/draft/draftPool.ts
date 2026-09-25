@@ -4,24 +4,35 @@ import type { SourceFighter, VisibleAttribute } from "@/lib/data/types";
 import { classifyTier, type DraftTier } from "./tiers";
 
 /**
- * How many top performers per attribute feed into the curated pool.
- * Final pool size is the UNION across all 8 attributes' top-K lists —
- * typically well under 8*K once overlap is accounted for, since a
- * well-rounded fighter can rank top-K in several attributes at once.
- * Tuned to land near the "~70 recognizable fighters" target from
- * LOCKED_DECISIONS.md > Decision 2 — see draftPool.test.ts for the
- * actual measured size against the real 317-fighter CSV.
+ * Rank used to set each attribute's quality bar. The bar is the rating of
+ * the fighter at this rank; everyone at or above it is eligible for that
+ * attribute. Final pool size is the UNION across all 8 attributes — well
+ * under 8 x this, since a well-rounded fighter clears the bar in several
+ * attributes at once. Lands near the "~70 recognizable fighters" target
+ * from DESIGN_FINAL.md; see draftPool.test.ts for the measured size
+ * against the real 317-fighter CSV.
  */
-const TOP_K_PER_ATTRIBUTE = 10;
+const CUTOFF_RANK = 10;
 
-function topFightersByAttribute(attribute: VisibleAttribute, k: number): SourceFighter[] {
-  return [...SOURCE_FIGHTERS]
-    .sort((a, b) => b[attribute] - a[attribute] || a.name.localeCompare(b.name))
-    .slice(0, k);
+/**
+ * Everyone whose rating for `attribute` is at least the rating of the
+ * fighter at CUTOFF_RANK. Ties at the bar are ALL kept: the number 10 sets
+ * a quality threshold, not a headcount. (An earlier version took exactly
+ * ten and broke ties alphabetically, which silently dropped elite names
+ * such as Jones, Makhachev and Usman from Wrestling for no reason a player
+ * could defend.)
+ */
+function eligibleFighters(attribute: VisibleAttribute, rank: number): SourceFighter[] {
+  const byRating = [...SOURCE_FIGHTERS].sort(
+    (a, b) => b[attribute] - a[attribute] || a.name.localeCompare(b.name)
+  );
+  const cutoff = byRating[Math.min(rank, byRating.length) - 1]![attribute];
+  return byRating.filter((fighter) => fighter[attribute] >= cutoff);
 }
 
 /**
- * The curated draft pool: union of the top-K fighters per attribute,
+ * The curated draft pool: union, across the 8 attributes, of every fighter at or above that
+ * attribute's quality bar (the rating of its 10th-ranked fighter),
  * out of the full 317. This is what candidate generation (next chunk)
  * samples from instead of the whole roster — DESIGN_FINAL.md's
  * rationale is that opportunity cost ("I already used Pereira") only
@@ -38,7 +49,7 @@ function topFightersByAttribute(attribute: VisibleAttribute, k: number): SourceF
 export function buildDraftPool(): SourceFighter[] {
   const pool = new Map<number, SourceFighter>();
   for (const attribute of VISIBLE_ATTRIBUTES) {
-    for (const fighter of topFightersByAttribute(attribute, TOP_K_PER_ATTRIBUTE)) {
+    for (const fighter of eligibleFighters(attribute, CUTOFF_RANK)) {
       pool.set(fighter.id, fighter);
     }
   }

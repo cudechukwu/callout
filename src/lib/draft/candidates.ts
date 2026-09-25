@@ -75,7 +75,7 @@ function pickFromTier(
   throw new Error(
     "No available fighters remain for this attribute — draft pool exhausted. " +
       "This should be structurally impossible with an 8-round draft against a " +
-      "~70-fighter pool; if it happens, DRAFT_POOL or TOP_K_PER_ATTRIBUTE needs revisiting."
+      "~70-fighter pool; if it happens, DRAFT_POOL or CUTOFF_RANK needs revisiting."
   );
 }
 

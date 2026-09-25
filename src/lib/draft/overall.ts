@@ -14,24 +14,24 @@ import type { AttributeSelections } from "../simulation/types";
  * Weights come from `scripts/ovr-calibration.ts`: least-squares fit of
  * win rate against a field of random CPU builds on the engine's full 10
  * ratings (8 visible + hidden speed/defense) — 5,000 sampled drafts x 150
- * fights, held-out R^2 = 0.90 (vs 0.74 for a plain average of the 8
- * visible ratings). Refit after the per-domain sensitivity change
- * (BALANCE_REPORT.md > Sensitivity); the previous fit was against the
- * flat .08 engine. Re-run that script and paste the output here if the engine
- * or draft pool changes materially.
+ * fights, held-out R^2 = 0.89 (vs 0.75 for a plain average of the 8
+ * visible ratings). Last refit after the draft pool changed from 55 to 70
+ * fighters (BALANCE_REPORT.md > Draft pool); before that, after the
+ * per-domain sensitivity change. Re-run that script and paste the output
+ * here if the engine or draft pool changes materially.
  */
-const WIN_RATE_INTERCEPT = -2.8048;
+const WIN_RATE_INTERCEPT = -2.8237;
 const WIN_RATE_WEIGHTS: Readonly<Record<keyof FullAttributeRatings, number>> = {
-  wrestling: 0.1039,
-  submissions: 0.0331,
-  boxing: 0.0566,
-  kickboxing: 0.0335,
-  power: 0.023,
-  cardio: 0.0863,
-  chin: 0.0194,
-  fightIq: 0.1164,
-  defense: 0.1371,
-  speed: 0.1292,
+  wrestling: 0.1034,
+  submissions: 0.0345,
+  boxing: 0.0602,
+  kickboxing: 0.0339,
+  power: 0.021,
+  cardio: 0.0884,
+  chin: 0.0176,
+  fightIq: 0.1197,
+  defense: 0.1417,
+  speed: 0.1218,
 };
 
 /** OVR 70 = wins half its fights against the average CPU build. */

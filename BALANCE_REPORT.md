@@ -369,6 +369,31 @@ Question: does the engine have counter-play, i.e. do some builds systematically 
 
 ---
 
+## Draft pool: 55 to 70 fighters (tie-break fix)
+
+**Bug:** the curated pool took the top 10 fighters per skill and broke ties alphabetically. Many fighters tie at the cutoff (Wrestling: 15 fighters rated 4.9+, only 10 kept), so elite names were dropped for no defensible reason: Jon Jones, Islam Makhachev, Kamaru Usman and Curtis Blaydes in Wrestling; Petr Yan, Valentina Shevchenko, Jose Aldo, Khabib Nurmagomedov, Justin Gaethje, Randy Couture and Rose Namajunas elsewhere. 37 fighters with a 4.8+ skill were excluded, and the pool landed at 55, short of the ~70 target in DESIGN_FINAL.md.
+
+**Fix:** for each skill the bar is the rating of its 10th-ranked fighter; everyone at or above the bar is eligible; the pool is the union across the 8 skills. The number 10 sets a quality threshold, not a headcount. Result: **70 fighters** (the design target), including every name above. Two tests guard it (no fighter tying the bar is ever cut; the named elites are present).
+
+| Per draft (4,000 simulated) | 55 pool | 70 pool |
+|---|---|---|
+| Distinct fighters shown (of 24 cards) | 21.0 | 21.6 |
+| Drafts with at least one repeat shown | 98% | 95% |
+| A given fighter appears in a draft (median) | 39% | 30% |
+
+**Engine and OVR re-checked once, no coefficients changed.** OVR refit on the new pool: held-out R^2 0.89 (was 0.90); every weight within a few percent of before; scale anchor unchanged (best possible build predicts 76.2% field win rate, so the slope stays 108; OVR still ~71 for random picks, ~82 half-informed, ~91 best-of-3). Rampage validation (30 builds per bucket, 300 real rampages each):
+
+| OVR bucket | Field win % | Avg wins of 20 | P(18+) | Perfect run (measured / est.) |
+|---|---|---|---|---|
+| 90-92 | 69.8% | 14.0 | 3.3% | 0.08% / 0.08% |
+| 93-95 | 71.8% | 14.4 | 5.3% | 0.13% / 0.14% |
+| 96-97 | 74.0% | 14.8 | 7.3% | 0.19% / 0.25% |
+| 98-99 | 75.6% | 15.2 | 10.6% | 0.44% / 0.40% |
+
+Effectively unchanged from the 55-fighter pool. Balance stays frozen. The tier mix per skill shifted (e.g. Wrestling elite/strong/solid/wildcard is now 20/10/12/28).
+
+---
+
 ## How to continue this work
 
 ```bash
