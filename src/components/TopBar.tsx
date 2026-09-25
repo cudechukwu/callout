@@ -96,7 +96,7 @@ function AccountButton({ onNavigate }: { onNavigate: (event: React.MouseEvent) =
       aria-label={`Your profile, ${name}`}
       className="flex items-center gap-2 text-sm font-medium text-bone transition-colors hover:text-bone/80"
     >
-      <Avatar name={name} corner="red" initials src={pictureSrc(account.profile?.avatarKey)} className="cut-sm h-8 w-8" />
+      <Avatar name={name} corner="red" initials src={pictureSrc(account.profile?.avatarKey)} player className="cut-sm h-8 w-8" />
       <span className="hidden max-w-[10rem] truncate sm:inline">{name}</span>
     </Link>
   );

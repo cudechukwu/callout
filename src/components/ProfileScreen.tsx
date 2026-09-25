@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
-import { formatClock, primaryButton, secondaryButton } from "@/components/ui";
+import { formatClock, primaryButton } from "@/components/ui";
 import { saveProfile, signOut, type Profile } from "@/lib/account";
 import { DRAFT_POOL } from "@/lib/draft/draftPool";
 import { mp } from "@/lib/multiplayer/client";
@@ -14,9 +14,9 @@ const FIGHTER_NAME = new Map(DRAFT_POOL.map((f) => [f.id, f.name]));
 const METHOD = { KO: "KO", TKO: "TKO", SUB: "Submission", DEC: "Decision" } as const;
 
 const heading = "font-display text-lg font-semibold tracking-[0.07em] uppercase";
-const panel = "cut bg-panel/70 backdrop-blur-[3px]";
 const quietLink =
   "text-sm font-medium text-chalk underline decoration-chalk/40 underline-offset-4 transition-colors hover:text-bone";
+const smallButton = "!px-4 !py-2 !text-sm";
 
 const shortDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -27,10 +27,15 @@ interface ProfileScreenProps {
   profile: Profile;
 }
 
-/** A player card: record, stats, rivals, recent fights, then profile settings. */
+/**
+ * A fighter's page, not a dashboard: the player card leads (picture, name,
+ * record, four headline numbers), then rivals, fight history and a little
+ * about how they win and draft. Settings live behind Edit profile.
+ */
 export function ProfileScreen({ email, memberSince, profile }: ProfileScreenProps) {
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [failed, setFailed] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     mp<ProfileStats>("profile")
@@ -40,196 +45,240 @@ export function ProfileScreen({ email, memberSince, profile }: ProfileScreenProp
 
   const name = profile.displayName || "Your profile";
   const fights = stats ? stats.wins + stats.losses : 0;
+  const finishes = stats ? stats.finishes.ko + stats.finishes.sub : 0;
   const since = memberSince
     ? new Date(memberSince).toLocaleDateString(undefined, { month: "long", year: "numeric" })
     : null;
+  const repeated = stats?.mostDrafted.filter((pick) => pick.count > 1) ?? [];
 
-  const tiles: { label: string; value: string; gold?: boolean }[] = [
+  const headline: { label: string; value: string; gold?: boolean }[] = [
     { label: "Fights", value: stats ? String(fights) : "–" },
     { label: "Win rate", value: stats && fights ? `${Math.round((100 * stats.wins) / fights)}%` : "–" },
-    { label: "KO / TKO wins", value: stats ? String(stats.finishes.ko) : "–" },
-    { label: "Submission wins", value: stats ? String(stats.finishes.sub) : "–" },
-    { label: "Decision wins", value: stats ? String(stats.finishes.dec) : "–" },
+    { label: "Finishes", value: stats ? String(finishes) : "–" },
     { label: "Best build", value: stats?.builds.bestOverall != null ? String(stats.builds.bestOverall) : "–", gold: true },
-    { label: "Average build", value: stats?.builds.averageOverall != null ? String(stats.builds.averageOverall) : "–", gold: true },
-    { label: "Left on the table", value: stats?.builds.averageLeft != null ? String(stats.builds.averageLeft) : "–" },
   ];
 
   return (
-    <main className="animate-screen-in mx-auto w-full max-w-5xl px-4 py-8">
+    <main className="animate-screen-in mx-auto w-full max-w-5xl px-4 pt-8 pb-16">
       {/* Player card */}
-      <section className={`${panel} relative flex flex-col gap-6 overflow-hidden p-5 sm:flex-row sm:items-center sm:p-7`}>
-        <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-corner-red" />
-        <Avatar
-          name={name}
-          corner="red"
-          src={pictureSrc(profile.avatarKey)}
-          className="cut-sm h-28 w-28 shrink-0 sm:h-36 sm:w-36"
+      <section className="cut relative overflow-hidden bg-panel/75 backdrop-blur-[3px]">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[radial-gradient(90%_120%_at_0%_0%,rgba(232,52,63,0.22),transparent_60%)]"
         />
-        <div className="min-w-0 flex-1">
-          {since && <p className="text-sm text-chalk">Member since {since}</p>}
-          <h1 className="mt-1 truncate font-display text-[clamp(1.9rem,5vw,2.9rem)] leading-none font-semibold tracking-[0.07em] uppercase">
-            {name}
-          </h1>
-          <div className="mt-4 flex items-end gap-4">
-            <p className="font-numeric text-6xl leading-[0.8] font-bold">
-              {stats ? `${stats.wins}–${stats.losses}` : "–"}
-            </p>
-            <div className="pb-0.5">
-              <p className="text-xs text-chalk">Challenge record</p>
+        <div className="relative flex flex-col gap-6 p-5 sm:flex-row sm:p-8">
+          <Avatar
+            name={name}
+            corner="red"
+            src={pictureSrc(profile.avatarKey)}
+            player
+            className="cut-sm aspect-square w-36 shrink-0 sm:w-52"
+          />
+          <div className="flex min-w-0 flex-1 flex-col">
+            {since && <p className="text-sm text-chalk">Member since {since}</p>}
+            <h1 className="mt-1 font-display text-[clamp(2rem,5vw,3.2rem)] leading-[0.95] font-semibold tracking-[0.07em] break-words uppercase">
+              {name}
+            </h1>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <p className="font-numeric text-5xl leading-none font-bold sm:text-6xl">
+                {stats ? `${stats.wins}–${stats.losses}` : "–"}
+              </p>
               {stats?.streak && (
                 <p
-                  className={`cut-sm mt-1 inline-block px-2 py-0.5 font-display text-sm font-semibold tracking-[0.08em] ${
+                  className={`cut-sm px-2 py-0.5 font-display text-sm font-semibold tracking-[0.08em] ${
                     stats.streak.kind === "W" ? "bg-corner-red text-bone" : "bg-panel-raised text-chalk"
                   }`}
                 >
                   {stats.streak.kind}
-                  {stats.streak.length} streak
+                  {stats.streak.length}
                 </p>
               )}
             </div>
+
+            <dl className="mt-6 grid grid-cols-4 border-t border-bone/10 pt-4">
+              {headline.map((stat, i) => (
+                <div key={stat.label} className={i > 0 ? "border-l border-bone/10 pl-3 sm:pl-5" : ""}>
+                  <dt className="text-xs text-chalk">{stat.label}</dt>
+                  <dd className={`mt-1 font-numeric text-2xl leading-none font-bold sm:text-3xl ${stat.gold ? "text-belt-gold" : ""}`}>
+                    {stat.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+
+            <div className="mt-6 flex flex-wrap items-center gap-5">
+              <Link href="/challenge" className={`${primaryButton} ${smallButton}`}>
+                Challenge a friend
+              </Link>
+              <button onClick={() => setEditing((v) => !v)} className={quietLink}>
+                {editing ? "Back to profile" : "Edit profile"}
+              </button>
+            </div>
           </div>
-        </div>
-        <div className="flex shrink-0 gap-3 sm:flex-col">
-          <Link href="/challenge" className={`${primaryButton} !px-5 !py-2.5 !text-base text-center`}>
-            Challenge a friend
-          </Link>
-          <a href="#edit" className={`${secondaryButton} !px-5 !py-2.5 !text-base text-center`}>
-            Edit profile
-          </a>
         </div>
       </section>
 
       {failed && <p className="mt-4 text-sm text-chalk">Couldn&rsquo;t load your stats. Refresh to try again.</p>}
 
-      {/* Stats */}
-      <section aria-label="Stats" className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {tiles.map((tile) => (
-          <div key={tile.label} className={`${panel} px-4 py-3`}>
-            <p className="text-xs text-chalk">{tile.label}</p>
-            <p className={`mt-1 font-numeric text-3xl leading-none font-bold ${tile.gold ? "text-belt-gold" : ""}`}>
-              {tile.value}
-            </p>
-          </div>
-        ))}
-      </section>
-
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        {/* Rivals */}
-        <section className={`${panel} p-5`}>
-          <h2 className={heading}>Rivals</h2>
-          {stats && stats.rivals.length === 0 ? (
-            <div className="mt-3">
-              <p className="text-chalk">No rivals yet.</p>
-              <Link href="/challenge" className={`${quietLink} mt-2 inline-block`}>
-                Send a challenge
-              </Link>
-            </div>
-          ) : (
-            <ul className="mt-3 divide-y divide-line/60">
-              {(stats?.rivals ?? []).map((rival) => {
-                const lead = rival.wins - rival.losses;
-                return (
-                  <li key={rival.inviteToken}>
-                    <Link href={`/c/${rival.inviteToken}`} className="group flex items-center gap-3 py-2.5">
-                      <Avatar
-                        name={rival.name}
-                        corner="white"
-                        src={pictureSrc(rival.avatarKey)}
-                        className="cut-sm h-11 w-11 shrink-0"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-display font-semibold tracking-[0.06em] uppercase group-hover:text-bone">
-                          {rival.name}
-                        </p>
-                        <p className="text-xs text-chalk">
-                          {lead > 0 ? "You lead" : lead < 0 ? "They lead" : "Level"}
-                          {rival.lastPlayed && ` · ${shortDate(rival.lastPlayed)}`}
-                        </p>
-                      </div>
-                      <p className="font-numeric text-2xl font-bold">
-                        {rival.wins}–{rival.losses}
-                      </p>
-                      <span aria-hidden="true" className="text-chalk transition-transform group-hover:translate-x-0.5">
-                        &rarr;
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        {/* Recent fights */}
-        <section className={`${panel} p-5`}>
-          <h2 className={heading}>Recent fights</h2>
-          {stats && stats.recent.length === 0 ? (
-            <p className="mt-3 text-chalk">No fights yet.</p>
-          ) : (
-            <ul className="mt-3 divide-y divide-line/60">
-              {(stats?.recent ?? []).map((fight, index) => (
-                <li key={index}>
-                  <Link href={`/c/${fight.inviteToken}`} className="group flex items-center gap-3 py-2.5">
-                    <span
-                      className={`cut-sm flex h-9 w-9 shrink-0 items-center justify-center font-display text-lg font-bold ${
-                        fight.won ? "bg-corner-red text-bone" : "bg-panel-raised text-chalk"
-                      }`}
-                    >
-                      {fight.won ? "W" : "L"}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate">
-                        <span className="text-chalk">vs </span>
-                        <span className="font-display font-semibold tracking-[0.06em] uppercase group-hover:text-bone">
-                          {fight.opponentName}
-                        </span>
-                      </p>
-                      <p className="text-xs text-chalk">
-                        {METHOD[fight.method]}
-                        {fight.method !== "DEC" && ` · R${fight.round} ${formatClock(fight.time)}`}
-                      </p>
-                    </div>
-                    <p className="text-xs text-chalk">{shortDate(fight.playedAt)}</p>
+      {editing ? (
+        <EditProfile email={email} profile={profile} onDone={() => setEditing(false)} />
+      ) : (
+        <div className="mt-10 grid gap-x-12 gap-y-10 lg:grid-cols-[1.35fr_1fr]">
+          <div className="flex flex-col gap-10">
+            {/* Rivals */}
+            <section>
+              <h2 className={heading}>Rivals</h2>
+              {stats && stats.rivals.length === 0 ? (
+                <p className="mt-3 text-chalk">
+                  No rivals yet.{" "}
+                  <Link href="/challenge" className={quietLink}>
+                    Send a challenge
                   </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
+                </p>
+              ) : (
+                <ul className="mt-3 flex flex-col gap-2">
+                  {(stats?.rivals ?? []).map((rival) => {
+                    const lead = rival.wins - rival.losses;
+                    return (
+                      <li key={rival.inviteToken} className="cut-sm flex items-center gap-4 bg-panel/60 p-3 pr-4">
+                        <Avatar
+                          name={rival.name}
+                          corner="white"
+                          src={pictureSrc(rival.avatarKey)}
+                          player
+                          className="cut-sm h-14 w-14 shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-display text-lg leading-tight font-semibold tracking-[0.06em] uppercase">
+                            {rival.name}
+                          </p>
+                          <p className="text-sm text-chalk">
+                            {lead > 0 ? "You lead" : lead < 0 ? "They lead" : "Level"}
+                            {rival.lastPlayed && ` · ${shortDate(rival.lastPlayed)}`}
+                          </p>
+                        </div>
+                        <p className="font-numeric text-3xl leading-none font-bold">
+                          {rival.wins}–{rival.losses}
+                        </p>
+                        <Link href={`/c/${rival.inviteToken}`} className={`${primaryButton} ${smallButton} shrink-0`}>
+                          Run it back
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
 
-      {/* Most drafted: only once a pick repeats, or it's just your last build. */}
-      {stats && stats.mostDrafted.some((pick) => pick.count > 1) && (
-        <section className={`${panel} mt-4 p-5`}>
-          <h2 className={heading}>Most drafted</h2>
-          <ol className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
-            {stats.mostDrafted.map((pick) => {
-              const fighterName = FIGHTER_NAME.get(pick.fighterId) ?? "Unknown";
-              return (
-                <li key={pick.fighterId} className="flex items-center gap-2.5">
-                  <Avatar name={fighterName} corner="neutral" className="cut-sm h-10 w-10 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="truncate font-display text-sm font-semibold tracking-[0.05em] uppercase">
-                      {fighterName}
-                    </p>
-                    <p className="text-xs text-chalk">
-                      {pick.count} {pick.count === 1 ? "build" : "builds"}
-                    </p>
+            {/* Fight history */}
+            <section>
+              <h2 className={heading}>Fight history</h2>
+              {stats && stats.recent.length === 0 ? (
+                <p className="mt-3 text-chalk">No fights yet.</p>
+              ) : (
+                <ul className="mt-2 divide-y divide-line/50">
+                  {(stats?.recent ?? []).map((fight, index) => (
+                    <li key={index}>
+                      <Link href={`/c/${fight.inviteToken}`} className="group flex items-center gap-4 py-2.5">
+                        <span
+                          className={`w-6 font-display text-lg font-bold ${fight.won ? "text-corner-red-bright" : "text-chalk"}`}
+                        >
+                          {fight.won ? "W" : "L"}
+                        </span>
+                        <p className="min-w-0 flex-1 truncate">
+                          <span className="text-chalk">vs </span>
+                          <span className="font-display font-semibold tracking-[0.06em] uppercase group-hover:text-bone">
+                            {fight.opponentName}
+                          </span>
+                        </p>
+                        <p className="text-sm text-chalk">
+                          {METHOD[fight.method]}
+                          {fight.method !== "DEC" && ` · R${fight.round} ${formatClock(fight.time)}`}
+                        </p>
+                        <p className="hidden w-16 text-right text-sm text-chalk-faint sm:block">
+                          {shortDate(fight.playedAt)}
+                        </p>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+
+          <div className="flex flex-col gap-10">
+            {/* Wins by method */}
+            <section>
+              <h2 className={heading}>Wins by method</h2>
+              <div className="mt-3 flex flex-col gap-3">
+                {(
+                  [
+                    ["KO / TKO", stats?.finishes.ko ?? 0],
+                    ["Submission", stats?.finishes.sub ?? 0],
+                    ["Decision", stats?.finishes.dec ?? 0],
+                  ] as const
+                ).map(([label, count]) => (
+                  <div key={label}>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-chalk">{label}</span>
+                      <span className="font-numeric font-bold">{count}</span>
+                    </div>
+                    <div className="mt-1 h-1.5 bg-line/70">
+                      <div
+                        className="h-full bg-corner-red"
+                        style={{ width: `${stats?.wins ? (100 * count) / stats.wins : 0}%` }}
+                      />
+                    </div>
                   </div>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-      )}
+                ))}
+              </div>
+            </section>
 
-      <EditProfile email={email} profile={profile} />
+            {/* Drafting */}
+            <section>
+              <h2 className={heading}>Drafting</h2>
+              <dl className="mt-3 grid grid-cols-2 gap-4">
+                <div>
+                  <dt className="text-xs text-chalk">Average build</dt>
+                  <dd className="mt-1 font-numeric text-3xl leading-none font-bold text-belt-gold">
+                    {stats?.builds.averageOverall ?? "–"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-chalk">Left on the table</dt>
+                  <dd className="mt-1 font-numeric text-3xl leading-none font-bold">
+                    {stats?.builds.averageLeft ?? "–"}
+                  </dd>
+                </div>
+              </dl>
+              {repeated.length > 0 && (
+                <>
+                  <p className="mt-5 text-xs text-chalk">Go-to picks</p>
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {repeated.map((pick) => {
+                      const fighterName = FIGHTER_NAME.get(pick.fighterId) ?? "Unknown";
+                      return (
+                        <li key={pick.fighterId} className="flex items-center gap-3">
+                          <Avatar name={fighterName} corner="neutral" className="cut-sm h-9 w-9 shrink-0" />
+                          <p className="min-w-0 flex-1 truncate font-display font-semibold tracking-[0.05em] uppercase">
+                            {fighterName}
+                          </p>
+                          <p className="text-sm text-chalk">{pick.count} builds</p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
+              )}
+            </section>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
 
-function EditProfile({ email, profile }: { email: string; profile: Profile }) {
+function EditProfile({ email, profile, onDone }: { email: string; profile: Profile; onDone: () => void }) {
   const [name, setName] = useState(profile.displayName);
   const [avatarKey, setAvatarKey] = useState(profile.avatarKey);
   const [status, setStatus] = useState<string | null>(null);
@@ -255,8 +304,13 @@ function EditProfile({ email, profile }: { email: string; profile: Profile }) {
   }
 
   return (
-    <section id="edit" className={`${panel} mt-4 scroll-mt-20 p-5 sm:p-7`}>
-      <h2 className={heading}>Edit profile</h2>
+    <section className="animate-screen-in mt-8">
+      <div className="flex items-center justify-between">
+        <h2 className={heading}>Edit profile</h2>
+        <button onClick={onDone} className={quietLink}>
+          Done
+        </button>
+      </div>
 
       <p className="mt-5 text-sm text-chalk">Picture</p>
       <div className="mt-2 grid grid-cols-5 gap-2 sm:grid-cols-10">

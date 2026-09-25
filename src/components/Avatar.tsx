@@ -22,6 +22,11 @@ interface AvatarProps {
   initials?: boolean;
   /** A specific picture (a player's profile picture) instead of a generated one. */
   src?: string;
+  /**
+   * A person rather than a fighter (a player's profile): without a chosen
+   * picture they get the plain silhouette, never a random fighter portrait.
+   */
+  player?: boolean;
   className?: string;
 }
 
@@ -37,11 +42,12 @@ export function Avatar({
   translucent = false,
   initials = false,
   src: pictureSrc,
+  player = false,
   className = "",
 }: AvatarProps) {
   const hash = hashName(name);
 
-  const src = pictureSrc ?? portraitFor(name);
+  const src = pictureSrc ?? (player ? undefined : portraitFor(name));
   if (src) {
     return (
       <div

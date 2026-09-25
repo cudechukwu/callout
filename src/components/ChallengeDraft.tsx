@@ -182,6 +182,7 @@ export function ChallengeDraft({ roundId: initialRoundId }: { roundId: string })
         corner="white"
         initials
         src={pictureSrc(view.opponent.avatarKey)}
+        player
         className="cut-sm h-7 w-7"
       />
       <p>
