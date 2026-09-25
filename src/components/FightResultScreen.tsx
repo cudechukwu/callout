@@ -28,6 +28,8 @@ interface FightResultScreenProps {
   rampage?: RampageProgress;
   /** Single fights only: start a rampage with this same fighter. */
   onStartRampage?: () => void;
+  /** Single fights only: face a different opponent. */
+  onNewOpponent?: () => void;
   onRematch: () => void;
   onNewFighter: () => void;
 }
@@ -73,6 +75,7 @@ export function FightResultScreen({
   opponentName,
   rampage,
   onStartRampage,
+  onNewOpponent,
   onRematch,
   onNewFighter,
 }: FightResultScreenProps) {
@@ -145,9 +148,9 @@ export function FightResultScreen({
         />
       </section>
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-        {rampage ? (
-          rampage.fightNumber < rampage.total ? (
+      {rampage ? (
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          {rampage.fightNumber < rampage.total ? (
             <>
               <button onClick={rampage.onNext} className={`${primaryButton} sm:flex-1`}>
                 Next fight
@@ -160,23 +163,42 @@ export function FightResultScreen({
             <button onClick={rampage.onFinish} className={`${primaryButton} sm:flex-1`}>
               Final results
             </button>
-          )
-        ) : (
-          <>
-            <button onClick={onRematch} className={`${primaryButton} sm:flex-1`}>
-              Run it back
+          )}
+        </div>
+      ) : (
+        <div className="mt-6">
+          {/* One clear next step, two quieter ones, and the one that destroys
+              something as a small link. After a loss the natural next step is
+              revenge, so the rematch leads; after a win it is a new opponent. */}
+          <button
+            onClick={won && onNewOpponent ? onNewOpponent : onRematch}
+            className={`${primaryButton} w-full`}
+          >
+            {won && onNewOpponent ? "New opponent" : "Run it back"}
+          </button>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+            <button
+              onClick={won && onNewOpponent ? onRematch : (onNewOpponent ?? onRematch)}
+              className={`${secondaryButton} sm:flex-1`}
+            >
+              {won && onNewOpponent ? "Run it back" : onNewOpponent ? "New opponent" : "Run it back"}
             </button>
             {onStartRampage && (
               <button onClick={onStartRampage} className={`${secondaryButton} sm:flex-1`}>
                 Rampage: 20 fights
               </button>
             )}
-            <button onClick={onNewFighter} className={`${secondaryButton} sm:flex-1`}>
+          </div>
+          <div className="mt-5 text-center">
+            <button
+              onClick={onNewFighter}
+              className="text-sm font-medium text-chalk underline decoration-chalk/40 underline-offset-4 transition-colors hover:text-bone"
+            >
               Build new fighter
             </button>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

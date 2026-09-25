@@ -203,6 +203,10 @@ export default function DraftPage() {
   }
 
   function handleNewFighter() {
+    // Nothing is saved yet, so this loses the fighter and record. Ask first.
+    if (playerSnapshot && !window.confirm("Start over with a new fighter? Your current fighter and record aren't saved yet, so they'll be lost.")) {
+      return;
+    }
     // Full reset — no persistence yet, so "new fighter" just restarts
     // the whole flow from a fresh draft.
     setPlayerSnapshot(null);
@@ -398,6 +402,7 @@ export default function DraftPage() {
                 }
           }
           onStartRampage={rampageStart === null ? handleStartRampage : undefined}
+          onNewOpponent={rampageStart === null ? handleFindFight : undefined}
           onRematch={handleRematch}
           onNewFighter={handleNewFighter}
         />
