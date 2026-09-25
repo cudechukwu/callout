@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { primaryButton } from "@/components/ui";
+import { DRAFT_POOL } from "@/lib/draft/draftPool";
 
 const STATS = [
-  ["55", "real fighters"],
+  [String(DRAFT_POOL.length), "real fighters"],
   ["8", "skills"],
   ["20", "fights"],
 ] as const;
@@ -35,12 +36,6 @@ export function HeroLockup({ titleStyle }: HeroLockupProps) {
         <Link href="/draft" className={primaryButton}>
           Build your fighter
         </Link>
-        <a
-          href="#how"
-          className="text-sm font-medium text-bone/80 underline decoration-bone/30 underline-offset-4 transition-colors hover:text-bone"
-        >
-          How it works
-        </a>
       </div>
 
       <dl className="animate-rise-in mt-9 flex gap-8 border-t border-bone/15 pt-4" style={{ animationDelay: "400ms" }}>
