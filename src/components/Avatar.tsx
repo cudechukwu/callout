@@ -1,7 +1,4 @@
 import { hashName, initialsOf, portraitFor } from "@/lib/avatars";
-import { DRAFT_POOL } from "@/lib/draft/draftPool";
-
-const POOL_NAMES = new Set(DRAFT_POOL.map((f) => f.name));
 
 export type Corner = "red" | "white" | "neutral";
 
@@ -44,7 +41,7 @@ export function Avatar({
 }: AvatarProps) {
   const hash = hashName(name);
 
-  const src = pictureSrc ?? portraitFor(name, POOL_NAMES.has(name));
+  const src = pictureSrc ?? portraitFor(name);
   if (src) {
     return (
       <div
