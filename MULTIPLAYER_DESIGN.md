@@ -260,10 +260,16 @@ create table draft_actions (
   unique (draft_round_id, user_id, sequence)      -- idempotency / ordering
 );
 
+-- One pick per player per round, even if two pick() requests race.
+create unique index one_pick_per_round
+  on draft_actions (draft_round_id, user_id, round_index)
+  where action_type = 'pick';
+
 create table fights (
   id              uuid primary key default gen_random_uuid(),
+  series_id       uuid references series(id) on delete cascade,
   draft_round_id  uuid references draft_rounds(id) on delete cascade,
-  fight_number    int  not null,                  -- within the series
+  fight_number    int  not null,                  -- series-wide: 1, 2, 3 ... across draft rounds
   fight_seed      bigint not null,
   engine_version  text not null,
   status          text not null default 'resolved',
@@ -273,17 +279,23 @@ create table fights (
   finish_time     smallint not null,
   result_json     jsonb not null,                 -- full event log + stats: playback never re-simulates
   created_at      timestamptz not null default now(),
-  unique (draft_round_id, fight_number)
+  unique (series_id, fight_number)
 );
 
 create table series_requests (                    -- consent for rivalry fights
-  id           uuid primary key default gen_random_uuid(),
-  series_id    uuid references series(id) on delete cascade,
-  kind         text not null check (kind in ('run_it_back', 'redraft')),
-  requested_by uuid not null,
-  status       text not null default 'pending',   -- pending | accepted | declined | expired
-  created_at   timestamptz not null default now()
+  id              uuid primary key default gen_random_uuid(),
+  series_id       uuid references series(id) on delete cascade,
+  kind            text not null check (kind in ('run_it_back', 'redraft')),
+  after_fight_id  uuid not null references fights(id),  -- the state it answers; stale requests can't be accepted
+  requested_by    uuid not null,
+  status          text not null default 'pending',       -- pending | accepted | declined | expired
+  created_at      timestamptz not null default now()
 );
+
+-- At most one open request per series at a time.
+create unique index one_pending_request
+  on series_requests (series_id)
+  where status = 'pending';
 ```
 
 `draft_actions` is the source of truth; `draft_participants` holds the convenient current state (progress, rerolls left, lock). **Store the full fight result** (event log and stats) so old rivalries replay identically, independent of future engine code. (The engine has one `Math.pow(x, 1.5)` in the TKO curve that browsers may round slightly differently; stored events sidestep that. The random generator, `seedrandom`, is integer-based and identical everywhere.)
@@ -305,6 +317,8 @@ All authenticate the caller's session, validate, then write with the service rol
 | `resolveFight(fightId)` | Server only: read both snapshots, run the engine, store the immutable result. |
 | `requestRunItBack(seriesId)` / `respond(requestId, accept)` | On acceptance: creates fight N+1 under the same draft round with a new fight seed. |
 | `requestRedraft(seriesId)` / `respond(requestId, accept)` | On acceptance: creates the next draft round with a new seed and plan. |
+
+**Rivalry requests, in one transaction:** only one request can be pending per series, and it names the fight it follows (`after_fight_id`). If the other player has already asked for the **same** thing, the second request counts as acceptance and the fight or draft is created immediately. If they asked for the **other** thing, the new request is refused and the player is shown theirs to accept or decline. A request whose `after_fight_id` is no longer the latest fight is expired, never accepted.
 
 Add per-user and per-IP rate limits (anonymous sign-in is easy to farm). Room for a short human-friendly code is optional and low priority; **the long opaque token is the credential**, and any short code must be aggressively rate-limited.
 
@@ -360,6 +374,8 @@ draft round:   drafting ──(both locked)──► revealed
 | Creator opens their own link as "join" | Rejected. |
 | Versions change mid-life | Unfinished rounds pin their versions; finished fights still replay from stored results. |
 | Rematch request ignored | Stays pending; expires. It never changes the record until accepted. |
+| Both press Run it back at once | Treated as mutual acceptance: exactly one new fight. |
+| Two pick requests race | The partial unique index rejects the second. |
 
 ---
 
@@ -482,6 +498,7 @@ This is v2. After an independent review the following changed from v1:
 | Added `draft_version` and `ratings_version` alongside `engine_version` and `pool_version`. | They change independently and each alters what a stored game means. |
 | Long opaque invite token is the credential; any short code is only a convenience. | A short code is guessable; the link must be the secret. |
 | The plan is stored, not only re-derivable from the seed. | Old rounds must never regenerate differently after code changes. |
+| v2.1: `fight_number` is series-wide (`unique (series_id, fight_number)`); one pick per player per round enforced by a partial unique index; one pending rivalry request per series, tied to the fight it follows, with matching requests counting as acceptance. | Make invalid states impossible in Postgres instead of relying on application code. |
 
 Kept exactly as first proposed: asynchronous challenges by link, identical cards with hidden picks, the seed secret and offers dealt round by round, server-authoritative fights, stored event logs, Supabase anonymous auth with RLS and server-only writes, and one fight first.
 
