@@ -1,3 +1,4 @@
+import { VISIBLE_ATTRIBUTES, type SourceFighter, type VisibleAttribute } from "../data/types";
 import { buildFullAttributeRatings, type FullAttributeRatings } from "../simulation/derivedStats";
 import type { AttributeSelections } from "../simulation/types";
 
@@ -56,6 +57,35 @@ export function predictedFieldWinRate(selections: AttributeSelections): number {
     predicted += ratings[key] * WIN_RATE_WEIGHTS[key];
   }
   return predicted;
+}
+
+/**
+ * How many OVR points a fighter adds when used for `attribute`: the skill
+ * itself plus what their hidden speed and defense feed into the build. The
+ * score is additive across the eight picks, so two fighters can be compared
+ * for the same slot by subtracting these. Used by the reveal's "Your calls".
+ */
+export function slotValue(fighter: SourceFighter, attribute: VisibleAttribute): number {
+  return slotDelta(fighter, attribute);
+}
+
+/** Just the skill part of slotValue: the fighter's rating for `attribute`. */
+export function slotVisibleValue(fighter: SourceFighter, attribute: VisibleAttribute): number {
+  return OVR_PER_WIN_RATE * WIN_RATE_WEIGHTS[attribute] * fighter[attribute];
+}
+
+/** A zero-rated stand-in, so a slot's value can be read off as a difference. */
+const ZERO_FIGHTER: SourceFighter = {
+  id: -1, name: "reference", wrestling: 0, submissions: 0, boxing: 0, kickboxing: 0,
+  defense: 0, cardio: 0, power: 0, chin: 0, fightIq: 0, speed: 0,
+};
+
+function slotDelta(fighter: SourceFighter, attribute: VisibleAttribute): number {
+  const base = Object.fromEntries(
+    VISIBLE_ATTRIBUTES.map((a) => [a, { sourceFighter: ZERO_FIGHTER }])
+  ) as unknown as AttributeSelections;
+  const withFighter = { ...base, [attribute]: { sourceFighter: fighter } } as AttributeSelections;
+  return OVR_PER_WIN_RATE * (predictedFieldWinRate(withFighter) - predictedFieldWinRate(base));
 }
 
 export function computeOverall(selections: AttributeSelections): number {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { VISIBLE_ATTRIBUTES } from "@/lib/data/types";
 import { ATTRIBUTE_LABELS } from "@/lib/data/attributeLabels";
 import { SHOW_ATTRIBUTE_NUMBERS } from "@/lib/config";
+import type { YourCalls } from "@/lib/draft/answerSheet";
 import { computeIdentity } from "@/lib/draft/identity";
 import { ratingToDisplay } from "@/lib/ratings";
 import type { AttributeSelections } from "@/lib/simulation/types";
@@ -18,6 +19,8 @@ interface FighterSheetProps {
   /** Plays the reveal: OVR counts up, the recipe lines in, gold sweep. */
   reveal?: boolean;
   record?: { wins: number; losses: number };
+  /** How well the picks used the cards you were shown. Omitted for fighters with no draft history. */
+  calls?: YourCalls | null;
 }
 
 /**
@@ -32,6 +35,7 @@ export function FighterSheet({
   corner = "red",
   reveal = false,
   record,
+  calls,
 }: FighterSheetProps) {
   const [showBuild, setShowBuild] = useState(false);
   const identity = computeIdentity(selections);
@@ -124,6 +128,69 @@ export function FighterSheet({
               </dd>
             </div>
           </dl>
+
+          {calls && (
+            <section aria-label="Your calls" className="mt-4 border-t border-line pt-4">
+              <p className="text-sm text-chalk">Your calls</p>
+              <dl className="mt-2 space-y-2.5">
+                <div>
+                  <dt className="text-sm text-chalk">Left on the table</dt>
+                  <dd className="text-bone">
+                    {calls.leftOnTable < 1 ? (
+                      <span className="font-medium">Nothing. You got the most out of your cards.</span>
+                    ) : (
+                      <>
+                        <span className="font-numeric text-xl font-bold">{calls.leftOnTable}</span>{" "}
+                        <span className="font-medium">overall</span>
+                        <span className="block text-sm text-chalk">
+                          Best from the cards you saw: {Math.min(99, overall + calls.leftOnTable)}. You built {overall}.
+                        </span>
+                      </>
+                    )}
+                  </dd>
+                </div>
+                {calls.bestPick && (
+                  <div>
+                    <dt className="text-sm text-chalk">Best pick</dt>
+                    <dd className="font-medium text-bone">
+                      {calls.bestPick.fighterName}
+                      <span className="text-chalk"> for {ATTRIBUTE_LABELS[calls.bestPick.attribute]}</span>
+                    </dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-sm text-chalk">Biggest miss</dt>
+                  <dd className="font-medium text-bone">
+                    {calls.biggestMiss ? (
+                      <>
+                        {calls.biggestMiss.pickedName}
+                        <span className="text-chalk"> for {ATTRIBUTE_LABELS[calls.biggestMiss.attribute]}. </span>
+                        {calls.biggestMiss.betterName}
+                        <span className="text-chalk"> was also on the board (+{calls.biggestMiss.gain} overall).</span>
+                      </>
+                    ) : (
+                      "No real misses"
+                    )}
+                  </dd>
+                </div>
+                {calls.sleeper && (
+                  <div>
+                    <dt className="text-sm text-chalk">Sleeper</dt>
+                    <dd className="font-medium text-bone">
+                      {calls.sleeper.fighterName}
+                      <span className="text-chalk">
+                        {" "}
+                        for {ATTRIBUTE_LABELS[calls.sleeper.attribute]}. Hidden speed and defense added +{calls.sleeper.gain} overall.
+                      </span>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              <p className="mt-3 text-xs text-chalk-faint">
+                Based on Five-Star&rsquo;s ratings and the cards you were shown.
+              </p>
+            </section>
+          )}
 
           <button
             type="button"

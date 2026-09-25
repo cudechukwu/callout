@@ -21,6 +21,14 @@ const TOTAL_REROLLS = 2;
  * RNG through each action explicitly, same as simulateFight threads it
  * through each exchange.
  */
+/** What was on the board in one round and which fighter was taken. Kept so
+ * the reveal can grade your calls against the cards you were actually shown. */
+export interface BoardRecord {
+  readonly attribute: VisibleAttribute;
+  readonly cards: readonly [SourceFighter, SourceFighter, SourceFighter];
+  readonly pickedId: number;
+}
+
 export interface DraftSessionState {
   readonly attributeOrder: readonly VisibleAttribute[];
   readonly roundIndex: number; // index into attributeOrder; === length means complete
@@ -28,6 +36,8 @@ export interface DraftSessionState {
   readonly selections: ReadonlyMap<VisibleAttribute, SourceFighter>;
   readonly usedFighterIds: ReadonlySet<number>;
   readonly rerollsRemaining: number;
+  /** One record per completed round, in order. */
+  readonly history: readonly BoardRecord[];
 }
 
 /**
@@ -83,6 +93,7 @@ export function startDraft(
     selections: new Map(),
     usedFighterIds: new Set(),
     rerollsRemaining: TOTAL_REROLLS,
+    history: [],
   };
 }
 
@@ -166,6 +177,7 @@ export function selectCandidate(
     selections,
     usedFighterIds,
     rerollsRemaining: state.rerollsRemaining,
+    history: [...state.history, { attribute, cards: state.currentCandidates!, pickedId: fighterId }],
   };
 }
 

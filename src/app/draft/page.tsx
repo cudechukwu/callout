@@ -14,6 +14,7 @@ import { createRng } from "@/lib/simulation/rng";
 import { simulateFight } from "@/lib/simulation/engine";
 import type { FighterSnapshot, FightResult, RNG } from "@/lib/simulation/types";
 import { narrateFight, type NarratedMoment } from "@/lib/broadcast/narrate";
+import { computeYourCalls } from "@/lib/draft/answerSheet";
 import { computeOverall } from "@/lib/draft/overall";
 import { RAMPAGE_LENGTH, recordOf, toFightRecord, type FightRecord } from "@/lib/rampage";
 import { Avatar } from "@/components/Avatar";
@@ -62,6 +63,8 @@ export default function DraftPage() {
   const pickTimer = useRef<number | null>(null);
 
   const [playerSnapshot, setPlayerSnapshot] = useState<FighterSnapshot | null>(null);
+  // The cards shown each round, kept for the reveal's "Your calls".
+  const [draftHistory, setDraftHistory] = useState<DraftSessionState["history"]>([]);
   const [opponent, setOpponent] = useState<FighterSnapshot | null>(null);
   const [fightResult, setFightResult] = useState<FightResult | null>(null);
   const [moments, setMoments] = useState<NarratedMoment[]>([]);
@@ -78,6 +81,7 @@ export default function DraftPage() {
     () => (playerSnapshot ? computeOverall(playerSnapshot.selections) : 0),
     [playerSnapshot]
   );
+  const yourCalls = useMemo(() => computeYourCalls(draftHistory), [draftHistory]);
   const opponentOverall = useMemo(
     () => (opponent ? computeOverall(opponent.selections) : 0),
     [opponent]
@@ -137,6 +141,7 @@ export default function DraftPage() {
     }
     const id = typeof crypto !== "undefined" ? crypto.randomUUID() : `local-${Date.now()}`;
     setPlayerSnapshot(toFighterSnapshot(state, id, trimmed));
+    setDraftHistory(state.history);
     setPhase("complete");
   }
 
@@ -201,6 +206,7 @@ export default function DraftPage() {
     // Full reset — no persistence yet, so "new fighter" just restarts
     // the whole flow from a fresh draft.
     setPlayerSnapshot(null);
+    setDraftHistory([]);
     setOpponent(null);
     setFightResult(null);
     setMoments([]);
@@ -300,10 +306,11 @@ export default function DraftPage() {
             name={playerSnapshot.name}
             selections={playerSnapshot.selections}
             overall={playerOverall}
+            calls={yourCalls}
             reveal
           />
           <div
-            className="animate-rise-in flex flex-col gap-3 sm:flex-row"
+            className="animate-rise-in sticky bottom-0 -mx-4 flex flex-col gap-3 bg-gradient-to-t from-canvas via-canvas/95 to-transparent px-4 pt-6 pb-4 sm:flex-row"
             style={{ animationDelay: "1800ms" }}
           >
             <button
