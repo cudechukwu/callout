@@ -6,7 +6,8 @@ import { useParams } from "next/navigation";
 import { ChallengeDraft } from "@/components/ChallengeDraft";
 import { NameForm } from "@/components/NameForm";
 import { primaryButton } from "@/components/ui";
-import { mp } from "@/lib/multiplayer/client";
+import { mp, supabaseConfigured } from "@/lib/multiplayer/client";
+import { Unavailable } from "@/components/Unavailable";
 import type { InviteStatus } from "@/lib/multiplayer/types";
 
 const CLOSED_COPY: Record<string, string> = {
@@ -17,6 +18,10 @@ const CLOSED_COPY: Record<string, string> = {
 
 /** A challenge link: join it, or pick up your draft where you left it. */
 export default function ChallengePage() {
+  return supabaseConfigured ? <Challenge /> : <Unavailable />;
+}
+
+function Challenge() {
   const { token } = useParams<{ token: string }>();
   const [invite, setInvite] = useState<InviteStatus | null>(null);
   const [error, setError] = useState<string | null>(null);

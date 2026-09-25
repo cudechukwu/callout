@@ -5,10 +5,15 @@ import { useRouter } from "next/navigation";
 import { NameForm } from "@/components/NameForm";
 import { primaryButton } from "@/components/ui";
 import { useAccount } from "@/lib/account";
-import { mp } from "@/lib/multiplayer/client";
+import { mp, supabaseConfigured } from "@/lib/multiplayer/client";
+import { Unavailable } from "@/components/Unavailable";
 
 /** Sending a challenge needs an account (the server checks too). */
 export default function CreateChallengePage() {
+  return supabaseConfigured ? <CreateChallenge /> : <Unavailable />;
+}
+
+function CreateChallenge() {
   const router = useRouter();
   const account = useAccount();
 

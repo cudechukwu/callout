@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { supabaseBrowser } from "@/lib/multiplayer/client";
+import { supabaseBrowser, supabaseConfigured } from "@/lib/multiplayer/client";
 
 /**
  * Accounts. Everyone who plays a challenge has a Supabase session; until
@@ -42,6 +42,10 @@ export function useAccount(): AccountState {
   const [state, setState] = useState<AccountState>({ loading: true, session: null, signedIn: false, profile: null });
 
   useEffect(() => {
+    if (!supabaseConfigured) {
+      setState({ loading: false, session: null, signedIn: false, profile: null });
+      return;
+    }
     const supabase = supabaseBrowser();
     let alive = true;
     // Loads can overlap (a sign-up fires an auth event and a profile save

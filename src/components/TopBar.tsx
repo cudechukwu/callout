@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isRunActive } from "@/lib/runGuard";
 import { useAccount } from "@/lib/account";
+import { supabaseConfigured } from "@/lib/multiplayer/client";
 import { pictureSrc } from "@/lib/profilePictures";
 import { Avatar } from "@/components/Avatar";
 
@@ -74,6 +75,7 @@ export function TopBar() {
 /** Signed in: your picture and name, linking to your profile. Otherwise: Sign in. */
 function AccountButton({ onNavigate }: { onNavigate: (event: React.MouseEvent) => void }) {
   const account = useAccount();
+  if (!supabaseConfigured) return null;
   if (account.loading) return <span className="w-20" aria-hidden="true" />;
   if (!account.signedIn) {
     return (

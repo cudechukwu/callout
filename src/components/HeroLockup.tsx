@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { primaryButton, secondaryButton } from "@/components/ui";
 import { DRAFT_POOL } from "@/lib/draft/draftPool";
+import { supabaseConfigured } from "@/lib/multiplayer/client";
 
 const STATS = [
   [String(DRAFT_POOL.length), "real fighters"],
@@ -36,9 +37,11 @@ export function HeroLockup({ titleStyle }: HeroLockupProps) {
         <Link href="/draft" className={primaryButton}>
           Build your fighter
         </Link>
-        <Link href="/challenge" className={secondaryButton}>
-          Challenge a friend
-        </Link>
+        {supabaseConfigured && (
+          <Link href="/challenge" className={secondaryButton}>
+            Challenge a friend
+          </Link>
+        )}
       </div>
 
       <dl className="animate-rise-in mt-9 flex gap-8 border-t border-bone/15 pt-4" style={{ animationDelay: "400ms" }}>

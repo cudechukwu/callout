@@ -8,11 +8,20 @@ import type { Database } from "@/lib/supabase/database.types";
  */
 let browserClient: SupabaseClient<Database> | null = null;
 
+// Read literally so Next.js inlines them at build time.
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+/**
+ * False when the site was built without Supabase settings. Everything that
+ * needs Supabase (accounts, challenges) checks this and steps aside, so the
+ * single-player game keeps working instead of every page crashing.
+ */
+export const supabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
+
 export function supabaseBrowser(): SupabaseClient<Database> {
-  browserClient ??= createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  );
+  if (!supabaseConfigured) throw new Error("Challenges aren't available right now");
+  browserClient ??= createClient<Database>(SUPABASE_URL!, SUPABASE_KEY!);
   return browserClient;
 }
 

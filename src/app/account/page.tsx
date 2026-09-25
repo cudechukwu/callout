@@ -7,6 +7,8 @@ import { primaryButton } from "@/components/ui";
 import { saveProfile, signIn, signOut, signUp, useAccount, type Profile } from "@/lib/account";
 import { DISPLAY_NAME_MAX } from "@/lib/multiplayer/types";
 import { PROFILE_PICTURES, pictureSrc } from "@/lib/profilePictures";
+import { supabaseConfigured } from "@/lib/multiplayer/client";
+import { Unavailable } from "@/components/Unavailable";
 
 const field =
   "cut-sm mt-1 w-full bg-panel px-4 py-3 text-lg text-bone focus:bg-panel-raised focus:outline-2 focus:outline-belt-gold";
@@ -20,6 +22,7 @@ function safeNext(raw: string | null): string | null {
 }
 
 export default function AccountPage() {
+  if (!supabaseConfigured) return <Unavailable />;
   return (
     <Suspense>
       <AccountScreen />
