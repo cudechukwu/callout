@@ -11,6 +11,7 @@ import { ChallengeFight } from "@/components/ChallengeFight";
 import { DraftScreen, type DraftBoardState } from "@/components/DraftScreen";
 import { primaryButton } from "@/components/ui";
 import { pictureSrc } from "@/lib/profilePictures";
+import { draftFaces } from "@/lib/avatars";
 
 const PICK_LOCK_MS = 480;
 /** Fallback when realtime is unavailable; realtime normally refreshes first. */
@@ -30,6 +31,12 @@ function toBoard(view: DraftView): DraftBoardState {
     selections: new Map(view.picks.map((p) => [p.attribute, fighter(p.fighterId)])),
     usedFighterIds: new Set(view.picks.map((p) => p.fighterId)),
     rerollsRemaining: view.rerollsLeft,
+    history: view.history.map((round) => ({
+      attribute: round.attribute,
+      cards: round.cardIds.map(fighter) as unknown as [SourceFighter, SourceFighter, SourceFighter],
+      pickedId: round.pickedId,
+      offerIndex: round.offerIndex,
+    })),
   };
 }
 
@@ -186,6 +193,8 @@ export function ChallengeDraft({ roundId: initialRoundId }: { roundId: string })
     <InviteButton token={view.inviteToken} />
   );
 
+  const pickedFaces = draftFaces(board.history, null).picked;
+
   if (view.offer) {
     return (
       <>
@@ -226,7 +235,7 @@ export function ChallengeDraft({ roundId: initialRoundId }: { roundId: string })
           const f = fighter(pick.fighterId);
           return (
             <li key={attribute} className="cut-sm overflow-hidden border border-line/70 bg-panel/30">
-              <Avatar name={f.name} corner="red" className="aspect-[4/3] w-full" />
+              <Avatar name={f.name} src={pickedFaces.get(f.id)} corner="red" className="aspect-[4/3] w-full" />
               <div className="px-3 py-2">
                 <p className="text-xs text-chalk">{ATTRIBUTE_LABELS[attribute]}</p>
                 <p className="truncate font-display text-sm font-semibold tracking-[0.06em] uppercase">{f.name}</p>

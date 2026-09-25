@@ -60,6 +60,13 @@ export interface DraftView {
   /** The board in front of the player; null once all eight picks are in. */
   readonly offer: readonly [number, number, number] | null;
   readonly picks: Picks;
+  /** This player's own past boards (the cards each pick was made from). */
+  readonly history: readonly {
+    readonly attribute: VisibleAttribute;
+    readonly cardIds: readonly [number, number, number];
+    readonly pickedId: number;
+    readonly offerIndex: number;
+  }[];
   readonly rerollsLeft: number;
   /** Number of actions recorded; the next action must carry sequence + 1. */
   readonly sequence: number;

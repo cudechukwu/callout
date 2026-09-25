@@ -290,6 +290,12 @@ async function toView(userId: string, roundId: string, loaded: LoadedRound): Pro
       attribute: attribute as VisibleAttribute,
       fighterId: fighter.id,
     })),
+    history: state.history.map((round) => ({
+      attribute: round.attribute,
+      cardIds: round.cards.map((f) => f.id) as unknown as [number, number, number],
+      pickedId: round.pickedId,
+      offerIndex: round.offerIndex,
+    })),
     rerollsLeft: state.rerollsRemaining,
     sequence: loaded.actionCount,
     locked: Boolean(loaded.lockedAt.get(userId)),

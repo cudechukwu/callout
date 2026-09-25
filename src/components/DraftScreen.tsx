@@ -5,12 +5,13 @@ import { SHOW_ATTRIBUTE_RATINGS } from "@/lib/config";
 import { ATTRIBUTE_BLURB, ATTRIBUTE_SHORT, ratingToDisplay } from "@/lib/ratings";
 import { isAlreadyUsed, type DraftSessionState } from "@/lib/draft/session";
 import { Avatar } from "@/components/Avatar";
+import { draftFaces } from "@/lib/avatars";
 
 /** Just what the board needs, so a challenge draft (built from the server's
  * view) can use the same screen as a local draft. */
 export type DraftBoardState = Pick<
   DraftSessionState,
-  "attributeOrder" | "roundIndex" | "currentCandidates" | "selections" | "usedFighterIds" | "rerollsRemaining"
+  "attributeOrder" | "roundIndex" | "currentCandidates" | "selections" | "usedFighterIds" | "rerollsRemaining" | "history"
 >;
 
 interface DraftScreenProps {
@@ -28,6 +29,7 @@ export function DraftScreen({ state, pendingId, onPick, onReroll, aside }: Draft
   const candidates = state.currentCandidates!;
   const total = state.attributeOrder.length;
   const busy = pendingId !== null;
+  const faces = draftFaces(state.history, candidates);
 
   return (
     <main className="animate-screen-in mx-auto flex min-h-[calc(100svh-3.5rem-1px)] w-full max-w-4xl flex-col px-4 pt-5 pb-4 md:h-[calc(100svh-3.5rem-1px)]">
@@ -94,6 +96,7 @@ export function DraftScreen({ state, pendingId, onPick, onReroll, aside }: Draft
                 />
                 <Avatar
                   name={fighter.name}
+                  src={faces.board.get(fighter.id)}
                   corner="neutral"
                   translucent
                   className="h-20 w-20 shrink-0 sm:h-auto sm:min-h-0 sm:w-full sm:flex-1"
@@ -133,7 +136,7 @@ export function DraftScreen({ state, pendingId, onPick, onReroll, aside }: Draft
                   } ${picked || isCurrent ? "" : "opacity-40"}`}
                 >
                   {picked ? (
-                    <Avatar name={picked.name} corner="red" className="h-full w-full" />
+                    <Avatar name={picked.name} src={faces.picked.get(picked.id)} corner="red" className="h-full w-full" />
                   ) : (
                     <div className="h-full w-full border border-line/60 bg-panel/40" />
                   )}

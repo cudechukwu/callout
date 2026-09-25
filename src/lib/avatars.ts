@@ -1,13 +1,15 @@
+import type { SourceFighter } from "@/lib/data/types";
 import { DRAFT_POOL } from "@/lib/draft/draftPool";
 
 /**
- * Fighter portraits (fictional, AI-generated; /public/fighters). A fighter's
- * picture is fixed, so the same fighter always gets the same picture
- * everywhere. Real fighters get a portrait of their own
- * gender; made-up names (your fighter, CPU aliases) can get any.
+ * Fighter portraits (fictional, AI-generated; /public/fighters). They are
+ * stand-ins, not likenesses, so a real fighter has no permanent face.
+ * Instead, faces are dealt per board (see boardPortraits): the three cards
+ * always show three different faces of the right gender, and once a
+ * fighter is picked, his face is locked for the rest of that draft.
  *
- * To add portraits: drop square images in /public/fighters and list them
- * below. More portraits mean fewer repeats on a board of three cards.
+ * To add portraits: drop square images in /public/fighters and raise the
+ * counts below.
  */
 const MEN = Array.from({ length: 10 }, (_, i) => `/fighters/m-${String(i + 1).padStart(2, "0")}.jpg`);
 const WOMEN = Array.from({ length: 3 }, (_, i) => `/fighters/w-${String(i + 1).padStart(2, "0")}.jpg`);
@@ -27,13 +29,12 @@ const WOMEN_FIGHTERS = new Set([
   "Zhang Weili",
 ]);
 
-/** Kept for callers that only need to know whether portraits exist. */
+/** Every portrait; made-up names (your fighter, CPU aliases) can get any. */
 export const AVATAR_IMAGES: readonly string[] = [...MEN, ...WOMEN];
 
 /**
- * Real fighters are dealt portraits in turn (by id, within their group), so
- * every portrait is used about equally; hashing alone gave one image 8 of
- * the 11 women. Made-up names fall back to a hash of the name.
+ * Fallback faces for real fighters shown outside a draft board (e.g. a CPU
+ * build): dealt in turn by id within gender, so each is used about equally.
  */
 const POOL_PORTRAITS: ReadonlyMap<string, string> = (() => {
   const map = new Map<string, string>();
@@ -55,6 +56,73 @@ export function portraitFor(name: string): string | undefined {
   const dealt = POOL_PORTRAITS.get(name);
   if (dealt) return dealt;
   return AVATAR_IMAGES.length > 0 ? AVATAR_IMAGES[hashName(name) % AVATAR_IMAGES.length] : undefined;
+}
+
+/**
+ * Faces for one board of cards: every card gets a face of its gender, no
+ * two cards share one, and cards whose face is already locked (a fighter
+ * you picked earlier, back as "Already used") keep it. Deterministic in
+ * the board's contents, so a refresh, or the other player in a challenge,
+ * sees the same faces.
+ */
+export function boardPortraits(
+  cards: readonly SourceFighter[],
+  locked: ReadonlyMap<number, string> = new Map()
+): Map<number, string> {
+  const listFor = (card: SourceFighter) => (WOMEN_FIGHTERS.has(card.name) ? WOMEN : MEN);
+  const seed = hashName(cards.map((c) => c.id).sort((a, b) => a - b).join(","));
+  const sorted = [...cards].sort((a, b) => a.id - b.id);
+
+  // 1. The board's own faces: the same for everyone who sees this board.
+  const faces = new Map<number, string>();
+  const used = new Set<string>();
+  sorted.forEach((card, i) => {
+    const list = listFor(card);
+    const free = list.filter((face) => !used.has(face));
+    const choices = free.length > 0 ? free : list;
+    if (choices.length === 0) return;
+    const face = choices[(seed + i * 7) % choices.length]!;
+    faces.set(card.id, face);
+    used.add(face);
+  });
+
+  // 2. A fighter you already picked keeps his face. Only a card that now
+  //    clashes with it is moved, so everything else still matches what the
+  //    other player sees.
+  const lockedHere = sorted.filter((card) => locked.has(card.id));
+  if (lockedHere.length === 0) return faces;
+  for (const card of lockedHere) faces.set(card.id, locked.get(card.id)!);
+  const pinned = new Set(lockedHere.map((card) => locked.get(card.id)!));
+  for (const card of sorted) {
+    if (locked.has(card.id) || !pinned.has(faces.get(card.id)!)) continue;
+    const taken = new Set(faces.values());
+    const list = listFor(card);
+    const free = list.filter((face) => !taken.has(face));
+    if (free.length > 0) faces.set(card.id, free[seed % free.length]!);
+  }
+  return faces;
+}
+
+/** Just what face-dealing needs from one past round of a draft. */
+export interface PickedBoard {
+  readonly cards: readonly SourceFighter[];
+  readonly pickedId: number;
+}
+
+/**
+ * Replays a draft's boards to find every picked fighter's locked face and
+ * the faces for the board in front of the player now.
+ */
+export function draftFaces(
+  history: readonly PickedBoard[],
+  current: readonly SourceFighter[] | null
+): { picked: Map<number, string>; board: Map<number, string> } {
+  const picked = new Map<number, string>();
+  for (const round of history) {
+    const face = boardPortraits(round.cards, picked).get(round.pickedId);
+    if (face) picked.set(round.pickedId, face);
+  }
+  return { picked, board: current ? boardPortraits(current, picked) : new Map() };
 }
 
 /** Small stable hash so a name always maps to the same look. */
