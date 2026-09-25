@@ -397,6 +397,7 @@ export default function DraftPage() {
                   onFinish: () => setPhase("rampageSummary"),
                 }
           }
+          onStartRampage={rampageStart === null ? handleStartRampage : undefined}
           onRematch={handleRematch}
           onNewFighter={handleNewFighter}
         />

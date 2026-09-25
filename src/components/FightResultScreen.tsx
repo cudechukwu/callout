@@ -26,6 +26,8 @@ interface FightResultScreenProps {
   /** Present only during a rampage — replaces the rematch button with
    * next-fight / sim-the-rest / final-results controls. */
   rampage?: RampageProgress;
+  /** Single fights only: start a rampage with this same fighter. */
+  onStartRampage?: () => void;
   onRematch: () => void;
   onNewFighter: () => void;
 }
@@ -70,6 +72,7 @@ export function FightResultScreen({
   opponentId,
   opponentName,
   rampage,
+  onStartRampage,
   onRematch,
   onNewFighter,
 }: FightResultScreenProps) {
@@ -163,6 +166,11 @@ export function FightResultScreen({
             <button onClick={onRematch} className={`${primaryButton} sm:flex-1`}>
               Run it back
             </button>
+            {onStartRampage && (
+              <button onClick={onStartRampage} className={`${secondaryButton} sm:flex-1`}>
+                Rampage: 20 fights
+              </button>
+            )}
             <button onClick={onNewFighter} className={`${secondaryButton} sm:flex-1`}>
               Build new fighter
             </button>
