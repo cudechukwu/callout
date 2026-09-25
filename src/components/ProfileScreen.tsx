@@ -8,7 +8,7 @@ import { saveProfile, signOut, type Profile } from "@/lib/account";
 import { DRAFT_POOL } from "@/lib/draft/draftPool";
 import { mp } from "@/lib/multiplayer/client";
 import { DISPLAY_NAME_MAX, type ProfileStats } from "@/lib/multiplayer/types";
-import { PROFILE_PICTURES, pictureSrc } from "@/lib/profilePictures";
+import { DEFAULT_PICTURE_KEY, PROFILE_PICTURES, pictureSrc } from "@/lib/profilePictures";
 
 const FIGHTER_NAME = new Map(DRAFT_POOL.map((f) => [f.id, f.name]));
 const METHOD = { KO: "KO", TKO: "TKO", SUB: "Submission", DEC: "Decision" } as const;
@@ -39,6 +39,9 @@ export function ProfileScreen({ email, memberSince, profile }: ProfileScreenProp
   const [failed, setFailed] = useState(false);
   const [editing, setEditing] = useState(false);
   const [allRivals, setAllRivals] = useState(false);
+  // While editing, the player card previews the unsaved name and picture.
+  const [preview, setPreview] = useState<Profile | null>(null);
+  const shown = editing && preview ? preview : profile;
 
   useEffect(() => {
     mp<ProfileStats>("profile")
@@ -46,7 +49,7 @@ export function ProfileScreen({ email, memberSince, profile }: ProfileScreenProp
       .catch(() => setFailed(true));
   }, []);
 
-  const name = profile.displayName || "Your profile";
+  const name = shown.displayName || "Your profile";
   const fights = stats ? stats.wins + stats.losses : 0;
   const finishes = stats ? stats.finishes.ko + stats.finishes.sub : 0;
   const since = memberSince
@@ -73,7 +76,7 @@ export function ProfileScreen({ email, memberSince, profile }: ProfileScreenProp
           <Avatar
             name={name}
             corner="red"
-            src={pictureSrc(profile.avatarKey)}
+            src={pictureSrc(shown.avatarKey)}
             player
             className="cut-sm aspect-square w-36 shrink-0 sm:w-52"
           />
@@ -113,7 +116,13 @@ export function ProfileScreen({ email, memberSince, profile }: ProfileScreenProp
               <Link href="/challenge" className={`${primaryButton} ${smallButton}`}>
                 Challenge a friend
               </Link>
-              <button onClick={() => setEditing((v) => !v)} className={quietLink}>
+              <button
+                onClick={() => {
+                  setEditing((v) => !v);
+                  setPreview(null);
+                }}
+                className={quietLink}
+              >
                 {editing ? "Back to profile" : "Edit profile"}
               </button>
             </div>
@@ -124,7 +133,15 @@ export function ProfileScreen({ email, memberSince, profile }: ProfileScreenProp
       {failed && <p className="mt-4 text-sm text-chalk">Couldn&rsquo;t load your stats. Refresh to try again.</p>}
 
       {editing ? (
-        <EditProfile email={email} profile={profile} onDone={() => setEditing(false)} />
+        <EditProfile
+          email={email}
+          profile={profile}
+          onPreview={setPreview}
+          onDone={() => {
+            setEditing(false);
+            setPreview(null);
+          }}
+        />
       ) : (
         <div className="mt-10 grid gap-x-12 gap-y-10 lg:grid-cols-[1.35fr_1fr]">
           <div className="flex flex-col gap-10">
@@ -286,7 +303,14 @@ export function ProfileScreen({ email, memberSince, profile }: ProfileScreenProp
   );
 }
 
-function EditProfile({ email, profile, onDone }: { email: string; profile: Profile; onDone: () => void }) {
+interface EditProfileProps {
+  email: string;
+  profile: Profile;
+  onPreview: (draft: Profile) => void;
+  onDone: () => void;
+}
+
+function EditProfile({ email, profile, onPreview, onDone }: EditProfileProps) {
   const [name, setName] = useState(profile.displayName);
   const [avatarKey, setAvatarKey] = useState(profile.avatarKey);
   const [status, setStatus] = useState<string | null>(null);
@@ -296,6 +320,10 @@ function EditProfile({ email, profile, onDone }: { email: string; profile: Profi
     setName(profile.displayName);
     setAvatarKey(profile.avatarKey);
   }, [profile.displayName, profile.avatarKey]);
+
+  useEffect(() => {
+    onPreview({ displayName: name.trim() || profile.displayName, avatarKey });
+  }, [name, avatarKey, profile.displayName, onPreview]);
 
   const dirty = name.trim() !== profile.displayName || avatarKey !== profile.avatarKey;
 
@@ -323,7 +351,7 @@ function EditProfile({ email, profile, onDone }: { email: string; profile: Profi
       <p className="mt-5 text-sm text-chalk">Picture</p>
       <div className="mt-2 grid grid-cols-5 gap-2 sm:grid-cols-10">
         {PROFILE_PICTURES.map((picture) => {
-          const chosen = picture.key === avatarKey;
+          const chosen = picture.key === (avatarKey ?? DEFAULT_PICTURE_KEY);
           return (
             <button
               key={picture.key}

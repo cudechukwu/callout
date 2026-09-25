@@ -13,5 +13,3 @@ export const WOMEN_PORTRAITS: readonly string[] = [
   "/fighters/w-03.jpg",
   "/fighters/w-04.jpg"
 ];
-/** Shown for players who haven't chosen a picture. */
-export const PLAYER_PLACEHOLDER: string | undefined = "/fighters/o-01.jpg";

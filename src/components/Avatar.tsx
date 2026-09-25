@@ -1,5 +1,5 @@
 import { hashName, initialsOf, portraitFor } from "@/lib/avatars";
-import { PLAYER_PLACEHOLDER } from "@/lib/portraits.generated";
+import { DEFAULT_PICTURE_KEY, pictureSrc as profilePicture } from "@/lib/profilePictures";
 
 export type Corner = "red" | "white" | "neutral";
 
@@ -25,7 +25,7 @@ interface AvatarProps {
   src?: string;
   /**
    * A person rather than a fighter (a player's profile): without a chosen
-   * picture they get the placeholder portrait, never a random fighter.
+   * picture they get the default picture, never a random fighter.
    */
   player?: boolean;
   className?: string;
@@ -48,7 +48,7 @@ export function Avatar({
 }: AvatarProps) {
   const hash = hashName(name);
 
-  const src = pictureSrc ?? (player ? PLAYER_PLACEHOLDER : portraitFor(name));
+  const src = pictureSrc ?? (player ? profilePicture(DEFAULT_PICTURE_KEY) : portraitFor(name));
   if (src) {
     return (
       <div

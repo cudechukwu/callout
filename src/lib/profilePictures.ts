@@ -15,6 +15,9 @@ export const PROFILE_PICTURES: readonly ProfilePicture[] = [...MEN_PORTRAITS, ..
   src,
 }));
 
+/** What a player shows until they choose: the first portrait (m-01). */
+export const DEFAULT_PICTURE_KEY: string | null = PROFILE_PICTURES[0]?.key ?? null;
+
 const BY_KEY = new Map(PROFILE_PICTURES.map((p) => [p.key, p.src]));
 
 /** The image for a stored key, or undefined (falls back to a silhouette). */
