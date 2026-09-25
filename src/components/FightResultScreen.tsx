@@ -34,6 +34,9 @@ interface FightResultScreenProps {
   onNewFighter?: () => void;
   /** Replaces the default next steps (a challenge has its own). */
   actions?: React.ReactNode;
+  /** Profile pictures, for challenges between players. */
+  playerAvatarSrc?: string;
+  opponentAvatarSrc?: string;
 }
 
 function StatRow({
@@ -81,6 +84,8 @@ export function FightResultScreen({
   onRematch,
   onNewFighter,
   actions,
+  playerAvatarSrc,
+  opponentAvatarSrc,
 }: FightResultScreenProps) {
   const won = result.winnerId === playerId;
   const me = result.stats[playerId]!;
@@ -93,7 +98,12 @@ export function FightResultScreen({
         className={`cut animate-rise-in relative overflow-hidden px-6 py-8 sm:px-10 ${won ? "bg-corner-red" : "bg-panel-raised"}`}
       >
         <div aria-hidden="true" className="absolute inset-y-0 right-0 hidden w-52 sm:block">
-          <Avatar name={winnerName} corner={won ? "red" : "white"} className="h-full w-full opacity-90" />
+          <Avatar
+            name={winnerName}
+            corner={won ? "red" : "white"}
+            src={won ? playerAvatarSrc : opponentAvatarSrc}
+            className="h-full w-full opacity-90"
+          />
         </div>
         <p
           className={`font-display text-6xl leading-[0.9] font-semibold tracking-[0.07em] uppercase sm:text-7xl ${

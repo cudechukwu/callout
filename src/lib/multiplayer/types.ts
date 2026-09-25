@@ -46,9 +46,14 @@ export interface DraftView {
   readonly seriesId: string;
   readonly roundId: string;
   readonly inviteToken: string;
-  readonly me: { readonly name: string; readonly seat: number };
+  readonly me: { readonly name: string; readonly seat: number; readonly avatarKey: string | null };
   /** Null until someone accepts the challenge. */
-  readonly opponent: { readonly name: string; readonly progress: number; readonly locked: boolean } | null;
+  readonly opponent: {
+    readonly name: string;
+    readonly progress: number;
+    readonly locked: boolean;
+    readonly avatarKey: string | null;
+  } | null;
   readonly attributeOrder: readonly VisibleAttribute[];
   readonly roundIndex: number;
   readonly offerIndex: number;

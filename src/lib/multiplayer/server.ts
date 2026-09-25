@@ -191,8 +191,8 @@ interface LoadedRound {
   inviteToken: string;
   status: DraftView["roundStatus"];
   plan: DraftPlan;
-  me: { name: string; seat: number };
-  opponent: { userId: string; name: string } | null;
+  me: { name: string; seat: number; avatarKey: string | null };
+  opponent: { userId: string; name: string; avatarKey: string | null } | null;
   actionCount: number;
   state: DraftSessionState;
   lockedAt: Map<string, string | null>;
@@ -228,14 +228,18 @@ async function loadRound(userId: string, roundId: unknown): Promise<LoadedRound>
   );
   const plan = round.draft_plan as unknown as DraftPlan;
   const series = round.series as unknown as { invite_token: string };
+  const profiles = check(
+    await admin().from("profiles").select("id, avatar_key").in("id", participants.map((p) => p.user_id))
+  );
+  const avatarOf = (id: string) => profiles.find((p) => p.id === id)?.avatar_key ?? null;
 
   return {
     seriesId: round.series_id,
     inviteToken: series.invite_token,
     status: round.status as DraftView["roundStatus"],
     plan,
-    me: { name: mine.display_name, seat: mine.seat },
-    opponent: other ? { userId: other.user_id, name: other.display_name } : null,
+    me: { name: mine.display_name, seat: mine.seat, avatarKey: avatarOf(userId) },
+    opponent: other ? { userId: other.user_id, name: other.display_name, avatarKey: avatarOf(other.user_id) } : null,
     actionCount: actions.length,
     state: replayDraft(plan, actions),
     lockedAt: new Map(drafters.map((d) => [d.user_id, d.locked_at])),
@@ -264,6 +268,7 @@ async function toView(userId: string, roundId: string, loaded: LoadedRound): Pro
           name: opponent.name,
           progress: await opponentProgress(roundId, opponent.userId),
           locked: Boolean(loaded.lockedAt.get(opponent.userId)),
+          avatarKey: opponent.avatarKey,
         }
       : null,
     attributeOrder: state.attributeOrder,

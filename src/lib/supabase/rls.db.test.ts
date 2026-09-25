@@ -203,6 +203,29 @@ describe("after the reveal", () => {
   });
 });
 
+describe("profiles", () => {
+  it("a player creates and edits only their own profile, only name and picture", async () => {
+    expect((await alice.client.from("profiles").insert({ id: alice.id, display_name: "Alice", avatar_key: "pfp-01" })).error).toBeNull();
+    expect((await bob.client.from("profiles").insert({ id: alice.id, display_name: "Fake" })).error).not.toBeNull();
+    expect((await bob.client.from("profiles").insert({ id: bob.id, display_name: "Bob" })).error).toBeNull();
+
+    const hijack = await bob.client.from("profiles").update({ display_name: "Hacked" }).eq("id", alice.id).select("id");
+    expect(hijack.data ?? []).toEqual([]);
+    const created = await alice.client.from("profiles").update({ created_at: "2000-01-01" } as never).eq("id", alice.id);
+    expect(created.error).not.toBeNull();
+    expect((await alice.client.from("profiles").update({ avatar_key: "pfp-02" }).eq("id", alice.id)).error).toBeNull();
+    expect((await alice.client.from("profiles").update({ avatar_key: "../../etc" }).eq("id", alice.id)).error).not.toBeNull();
+    expect((await alice.client.from("profiles").delete().eq("id", alice.id).select("id")).data ?? []).toEqual([]);
+  });
+
+  it("signed-in players can read profiles; signed-out visitors cannot", async () => {
+    const { data } = await carol.client.from("profiles").select("display_name, avatar_key").eq("id", alice.id).single();
+    expect(data).toEqual({ display_name: "Alice", avatar_key: "pfp-02" });
+    const nobody = createClient(URL, PUBLISHABLE, noSession);
+    expect((await nobody.from("profiles").select("id")).data ?? []).toEqual([]);
+  });
+});
+
 describe("guests", () => {
   it("anonymous sign-in is enabled", async () => {
     const guest = createClient(URL, PUBLISHABLE, noSession);

@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isRunActive } from "@/lib/runGuard";
+import { useAccount } from "@/lib/account";
+import { pictureSrc } from "@/lib/profilePictures";
+import { Avatar } from "@/components/Avatar";
 
 function Star() {
   return (
@@ -61,18 +64,38 @@ export function TopBar() {
               Play
             </Link>
           )}
-          {/* Accounts don't exist yet; this marks where sign-in will go. */}
-          <button
-            type="button"
-            disabled
-            title="Accounts are coming soon"
-            className="cut-sm flex items-center gap-2 bg-panel-raised/80 px-3 py-1.5 text-sm font-medium whitespace-nowrap text-chalk disabled:cursor-not-allowed sm:px-4"
-          >
-            Sign in
-            <span className="hidden text-xs text-chalk-faint sm:inline">soon</span>
-          </button>
+          <AccountButton onNavigate={confirmLeave} />
         </div>
       </div>
     </header>
+  );
+}
+
+/** Signed in: your picture and name, linking to your profile. Otherwise: Sign in. */
+function AccountButton({ onNavigate }: { onNavigate: (event: React.MouseEvent) => void }) {
+  const account = useAccount();
+  if (account.loading) return <span className="w-20" aria-hidden="true" />;
+  if (!account.signedIn) {
+    return (
+      <Link
+        href="/account"
+        onClick={onNavigate}
+        className="cut-sm bg-panel-raised/80 px-3 py-1.5 text-sm font-medium whitespace-nowrap text-bone transition-colors hover:bg-line sm:px-4"
+      >
+        Sign in
+      </Link>
+    );
+  }
+  const name = account.profile?.displayName ?? "Profile";
+  return (
+    <Link
+      href="/account"
+      onClick={onNavigate}
+      aria-label={`Your profile, ${name}`}
+      className="flex items-center gap-2 text-sm font-medium text-bone transition-colors hover:text-bone/80"
+    >
+      <Avatar name={name} corner="red" initials src={pictureSrc(account.profile?.avatarKey)} className="cut-sm h-8 w-8" />
+      <span className="hidden max-w-[10rem] truncate sm:inline">{name}</span>
+    </Link>
   );
 }

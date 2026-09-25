@@ -10,6 +10,7 @@ import { Avatar } from "@/components/Avatar";
 import { ChallengeFight } from "@/components/ChallengeFight";
 import { DraftScreen, type DraftBoardState } from "@/components/DraftScreen";
 import { primaryButton } from "@/components/ui";
+import { pictureSrc } from "@/lib/profilePictures";
 
 const PICK_LOCK_MS = 480;
 /** Fallback when realtime is unavailable; realtime normally refreshes first. */
@@ -168,10 +169,19 @@ export function ChallengeDraft({ roundId: initialRoundId }: { roundId: string })
   }
 
   const opponentLine = view.opponent ? (
-    <p className="text-sm text-chalk">
-      <span className="text-bone">{view.opponent.name}</span>{" "}
-      {view.opponent.locked ? "locked in" : `${view.opponent.progress}/8`}
-    </p>
+    <div className="flex items-center gap-2 text-sm text-chalk">
+      <Avatar
+        name={view.opponent.name}
+        corner="white"
+        initials
+        src={pictureSrc(view.opponent.avatarKey)}
+        className="cut-sm h-7 w-7"
+      />
+      <p>
+        <span className="text-bone">{view.opponent.name}</span>{" "}
+        {view.opponent.locked ? "locked in" : `${view.opponent.progress}/8`}
+      </p>
+    </div>
   ) : (
     <InviteButton token={view.inviteToken} />
   );

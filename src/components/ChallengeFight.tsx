@@ -12,6 +12,7 @@ import { FightResultScreen } from "@/components/FightResultScreen";
 import { FightViewer } from "@/components/FightViewer";
 import { TaleOfTape } from "@/components/TaleOfTape";
 import { primaryButton, secondaryButton } from "@/components/ui";
+import { pictureSrc } from "@/lib/profilePictures";
 
 const POOL_BY_ID = new Map(DRAFT_POOL.map((f) => [f.id, f]));
 
@@ -85,8 +86,20 @@ export function ChallengeFight({ view, reveal, busy, onRequest, onRespond }: Cha
     return (
       <main className="animate-screen-in mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
         <TaleOfTape
-          player={{ name: view.me.name, overall: computeOverall(mine), selections: mine, tag: "You" }}
-          cpu={{ name: opponentName, overall: computeOverall(theirs), selections: theirs, tag: "Opponent" }}
+          player={{
+            name: view.me.name,
+            overall: computeOverall(mine),
+            selections: mine,
+            tag: "You",
+            avatarSrc: pictureSrc(view.me.avatarKey),
+          }}
+          cpu={{
+            name: opponentName,
+            overall: computeOverall(theirs),
+            selections: theirs,
+            tag: "Opponent",
+            avatarSrc: pictureSrc(view.opponent?.avatarKey),
+          }}
         />
         <div className="sticky bottom-0 -mx-4 bg-gradient-to-t from-canvas via-canvas/95 to-transparent px-4 pt-6 pb-4">
           <button onClick={() => setStage("fight")} className={`${primaryButton} mx-auto block w-full max-w-sm`}>
@@ -131,6 +144,8 @@ export function ChallengeFight({ view, reveal, busy, onRequest, onRespond }: Cha
       playerName={view.me.name}
       opponentId={reveal.opponentUserId}
       opponentName={opponentName}
+      playerAvatarSrc={pictureSrc(view.me.avatarKey)}
+      opponentAvatarSrc={pictureSrc(view.opponent?.avatarKey)}
       actions={
         <>
           <p className="mb-4 text-center font-display text-lg font-semibold tracking-[0.07em] uppercase">

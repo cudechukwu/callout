@@ -12,6 +12,8 @@ interface Side {
   record?: { wins: number; losses: number };
   /** Line under the name; defaults to "CPU" / the record / "Your fighter". */
   tag?: string;
+  /** A player's profile picture; otherwise a generated silhouette. */
+  avatarSrc?: string;
 }
 
 interface TaleOfTapeProps {
@@ -26,6 +28,7 @@ function Header({ side, corner }: { side: Side; corner: "red" | "white" }) {
       <Avatar
         name={side.name}
         corner={corner}
+        src={side.avatarSrc}
         className={`aspect-[4/5] w-full max-w-[11rem] ${isRed ? "cut-left" : "cut-right"} sm:max-w-[12.5rem]`}
       />
       <div className={`mt-3 ${isRed ? "text-left" : "text-right"}`}>

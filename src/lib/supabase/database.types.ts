@@ -245,6 +245,30 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          avatar_key: string | null
+          created_at: string
+          display_name: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_key?: string | null
+          created_at?: string
+          display_name: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_key?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       series: {
         Row: {
           created_at: string

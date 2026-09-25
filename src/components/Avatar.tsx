@@ -20,6 +20,8 @@ interface AvatarProps {
   translucent?: boolean;
   /** Show initials over the silhouette (useful at small sizes). */
   initials?: boolean;
+  /** A specific picture (a player's profile picture) instead of a generated one. */
+  src?: string;
   className?: string;
 }
 
@@ -33,12 +35,13 @@ export function Avatar({
   corner = "neutral",
   translucent = false,
   initials = false,
+  src: pictureSrc,
   className = "",
 }: AvatarProps) {
   const hash = hashName(name);
 
-  if (AVATAR_IMAGES.length > 0) {
-    const src = AVATAR_IMAGES[hash % AVATAR_IMAGES.length]!;
+  if (pictureSrc || AVATAR_IMAGES.length > 0) {
+    const src = pictureSrc ?? AVATAR_IMAGES[hash % AVATAR_IMAGES.length]!;
     return (
       <div
         aria-hidden="true"

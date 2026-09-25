@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAccount } from "@/lib/account";
 import { DISPLAY_NAME_MAX } from "@/lib/multiplayer/types";
 import { primaryButton } from "@/components/ui";
 
@@ -16,6 +17,12 @@ export function NameForm({ eyebrow, title, submitLabel, onSubmit }: NameFormProp
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Signed in: start from the profile name.
+  const profileName = useAccount().profile?.displayName;
+  useEffect(() => {
+    if (profileName) setName((current) => current || profileName);
+  }, [profileName]);
 
   return (
     <main className="animate-screen-in mx-auto flex min-h-[calc(100svh-3.5rem)] w-full max-w-md flex-col justify-center px-4 py-10">
