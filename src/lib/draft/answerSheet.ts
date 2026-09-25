@@ -8,6 +8,9 @@ import type { BoardRecord } from "./session";
  * a player dealt weak boards can still draft nearly perfectly. Display-only,
  * like OVR and identity (nothing in the simulation may import it).
  *
+ * "Biggest miss" is a real swap: holding every other pick fixed, the better
+ * card was on that board and was not a fighter used in another slot.
+ *
  * "Best from the cards you saw" is a hindsight upper bound, not a promise:
  * had a different card been taken earlier, later boards would have been
  * dealt differently, so the best combination of shown cards may never have
@@ -50,6 +53,7 @@ export function computeYourCalls(history: readonly BoardRecord[]): YourCalls | n
   });
 
   const actual = rounds.reduce((sum, r) => sum + r.values[r.pickedIndex]!, 0);
+  const pickedIds = new Set(history.map((round) => round.pickedId));
 
   // Best mix of the shown cards, each fighter used at most once (3^rounds tries).
   let best = -Infinity;
@@ -83,9 +87,15 @@ export function computeYourCalls(history: readonly BoardRecord[]): YourCalls | n
       bestPick = { attribute: r.round.attribute, fighterName: r.picked.name, edge: Math.round(edge) };
     }
 
-    const topIndex = r.values.indexOf(Math.max(...r.values));
+    // A miss must be a swap the player could really have made, holding every
+    // other pick fixed: the better card cannot be a fighter used in another slot.
+    let topIndex = r.pickedIndex;
+    r.round.cards.forEach((card, i) => {
+      const usedElsewhere = pickedIds.has(card.id) && card.id !== r.round.pickedId;
+      if (!usedElsewhere && r.values[i]! > r.values[topIndex]!) topIndex = i;
+    });
     const regret = r.values[topIndex]! - pickedValue;
-    if (regret >= biggestRegret) {
+    if (topIndex !== r.pickedIndex && regret >= biggestRegret) {
       biggestRegret = regret;
       biggestMiss = {
         attribute: r.round.attribute,

@@ -38,6 +38,8 @@ export function FighterSheet({
   calls,
 }: FighterSheetProps) {
   const [showBuild, setShowBuild] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+  const [showMissName, setShowMissName] = useState(false);
   const identity = computeIdentity(selections);
   const barColor = corner === "white" ? "bg-corner-white" : "bg-corner-red";
 
@@ -130,65 +132,106 @@ export function FighterSheet({
           </dl>
 
           {calls && (
-            <section aria-label="Your calls" className="mt-4 border-t border-line pt-4">
-              <p className="text-sm text-chalk">Your calls</p>
-              <dl className="mt-2 space-y-2.5">
+            <section aria-label="Your draft" className="mt-4 border-t border-line pt-4">
+              <div className="flex items-end justify-between gap-4">
                 <div>
-                  <dt className="text-sm text-chalk">Left on the table</dt>
-                  <dd className="text-bone">
+                  <p className="text-sm text-chalk">Left on the table</p>
+                  <p className="mt-1 flex items-baseline gap-1.5">
                     {calls.leftOnTable < 1 ? (
-                      <span className="font-medium">Nothing. You got the most out of your cards.</span>
-                    ) : (
-                      <>
-                        <span className="font-numeric text-xl font-bold">{calls.leftOnTable}</span>{" "}
-                        <span className="font-medium">overall</span>
-                        <span className="block text-sm text-chalk">
-                          Best from the cards you saw: {Math.min(99, overall + calls.leftOnTable)}. You built {overall}.
-                        </span>
-                      </>
-                    )}
-                  </dd>
-                </div>
-                {calls.bestPick && (
-                  <div>
-                    <dt className="text-sm text-chalk">Best pick</dt>
-                    <dd className="font-medium text-bone">
-                      {calls.bestPick.fighterName}
-                      <span className="text-chalk"> for {ATTRIBUTE_LABELS[calls.bestPick.attribute]}</span>
-                    </dd>
-                  </div>
-                )}
-                <div>
-                  <dt className="text-sm text-chalk">Biggest miss</dt>
-                  <dd className="font-medium text-bone">
-                    {calls.biggestMiss ? (
-                      <>
-                        {calls.biggestMiss.pickedName}
-                        <span className="text-chalk"> for {ATTRIBUTE_LABELS[calls.biggestMiss.attribute]}. </span>
-                        {calls.biggestMiss.betterName}
-                        <span className="text-chalk"> was also on the board (+{calls.biggestMiss.gain} overall).</span>
-                      </>
-                    ) : (
-                      "No real misses"
-                    )}
-                  </dd>
-                </div>
-                {calls.sleeper && (
-                  <div>
-                    <dt className="text-sm text-chalk">Sleeper</dt>
-                    <dd className="font-medium text-bone">
-                      {calls.sleeper.fighterName}
-                      <span className="text-chalk">
-                        {" "}
-                        for {ATTRIBUTE_LABELS[calls.sleeper.attribute]}. Hidden speed and defense added +{calls.sleeper.gain} overall.
+                      <span className="font-display text-2xl leading-none font-semibold tracking-[0.06em] text-bone uppercase">
+                        Nothing
                       </span>
+                    ) : (
+                      <>
+                        <span className="font-display text-4xl leading-none font-bold text-bone">
+                          {calls.leftOnTable}
+                        </span>
+                        <span className="text-sm text-chalk">overall</span>
+                      </>
+                    )}
+                  </p>
+                </div>
+                <dl className="flex gap-5 text-right">
+                  <div>
+                    <dt className="text-xs text-chalk">You built</dt>
+                    <dd className="font-display text-2xl leading-none font-bold text-bone">{overall}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-chalk">From your cards</dt>
+                    <dd className="font-display text-2xl leading-none font-bold text-bone">
+                      {Math.min(99, overall + calls.leftOnTable)}
                     </dd>
                   </div>
-                )}
-              </dl>
-              <p className="mt-3 text-xs text-chalk-faint">
-                Based on Five-Star&rsquo;s ratings and the cards you were shown.
-              </p>
+                </dl>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowReview((v) => !v)}
+                aria-expanded={showReview}
+                className="mt-3 text-sm font-medium text-bone/80 underline decoration-bone/30 underline-offset-4 transition-colors hover:text-bone"
+              >
+                {showReview ? "Hide my picks" : "Review my picks"}
+              </button>
+
+              {showReview && (
+                <dl className="mt-3 space-y-3 border-t border-line pt-3">
+                  {calls.bestPick && (
+                    <div>
+                      <dt className="text-xs text-chalk">Best pick</dt>
+                      <dd className="mt-0.5 font-medium text-bone">
+                        {calls.bestPick.fighterName}
+                        <span className="font-normal text-chalk">, {ATTRIBUTE_LABELS[calls.bestPick.attribute]}</span>
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-xs text-chalk">Biggest miss</dt>
+                    <dd className="mt-0.5">
+                      {calls.biggestMiss ? (
+                        <>
+                          <span className="font-medium text-bone">
+                            {ATTRIBUTE_LABELS[calls.biggestMiss.attribute]}
+                          </span>
+                          <span className="block text-sm text-chalk">
+                            A card on your board would have added +{calls.biggestMiss.gain} overall.
+                          </span>
+                          {showMissName ? (
+                            <span className="mt-1 block text-sm text-bone">
+                              {calls.biggestMiss.betterName} was there instead of {calls.biggestMiss.pickedName}.
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setShowMissName(true)}
+                              className="mt-1 text-sm font-medium text-bone/80 underline decoration-bone/30 underline-offset-4 transition-colors hover:text-bone"
+                            >
+                              Show me
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <span className="font-medium text-bone">No real misses</span>
+                      )}
+                    </dd>
+                  </div>
+                  {calls.sleeper && (
+                    <div>
+                      <dt className="text-xs text-chalk">Sleeper</dt>
+                      <dd className="mt-0.5 font-medium text-bone">
+                        {calls.sleeper.fighterName}
+                        <span className="font-normal text-chalk">, {ATTRIBUTE_LABELS[calls.sleeper.attribute]}</span>
+                        <span className="block text-sm font-normal text-chalk">
+                          Hidden speed and defense added +{calls.sleeper.gain} overall.
+                        </span>
+                      </dd>
+                    </div>
+                  )}
+                  <p className="text-xs text-chalk-faint">
+                    Based on Five-Star&rsquo;s ratings and the cards you were shown.
+                  </p>
+                </dl>
+              )}
             </section>
           )}
 

@@ -77,6 +77,20 @@ describe("computeYourCalls", () => {
     }
   });
 
+  it("only names a miss that was a real swap: never a fighter used in another slot", () => {
+    for (let s = 0; s < 500; s++) {
+      const state = draft(2000 + s, "random");
+      const calls = computeYourCalls(state.history)!;
+      if (!calls.biggestMiss) continue;
+      const otherPicks = new Set(
+        [...state.selections.entries()]
+          .filter(([attribute]) => attribute !== calls.biggestMiss!.attribute)
+          .map(([, fighter]) => fighter.name)
+      );
+      expect(otherPicks.has(calls.biggestMiss.betterName)).toBe(false);
+    }
+  });
+
   it("only names a miss worth at least a point, and calls a sleeper rarely", () => {
     let sleepers = 0;
     const n = 400;
