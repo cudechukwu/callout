@@ -499,6 +499,7 @@ This is v2. After an independent review the following changed from v1:
 | Long opaque invite token is the credential; any short code is only a convenience. | A short code is guessable; the link must be the secret. |
 | The plan is stored, not only re-derivable from the seed. | Old rounds must never regenerate differently after code changes. |
 | v2.1: `fight_number` is series-wide (`unique (series_id, fight_number)`); one pick per player per round enforced by a partial unique index; one pending rivalry request per series, tied to the fight it follows, with matching requests counting as acceptance. | Make invalid states impossible in Postgres instead of relying on application code. |
+| As built (M1, `supabase/migrations/`): private per-player state (rerolls, offer, OVRs, build snapshot) lives in its own `draft_builds` table; the seed, plan and invite token are never client-selectable, even after reveal (the server returns what the compare screen needs). | A row policy can't hide individual columns, so private columns needed their own table; clients never need the raw seed or plan. |
 
 Kept exactly as first proposed: asynchronous challenges by link, identical cards with hidden picks, the seed secret and offers dealt round by round, server-authoritative fights, stored event logs, Supabase anonymous auth with RLS and server-only writes, and one fight first.
 
