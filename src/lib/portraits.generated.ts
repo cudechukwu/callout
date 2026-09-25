@@ -10,5 +10,6 @@ export const MEN_PORTRAITS: readonly string[] = [
 export const WOMEN_PORTRAITS: readonly string[] = [
   "/fighters/w-01.jpg",
   "/fighters/w-02.jpg",
-  "/fighters/w-03.jpg"
+  "/fighters/w-03.jpg",
+  "/fighters/w-04.jpg"
 ];
