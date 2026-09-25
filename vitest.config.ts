@@ -9,5 +9,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // *.db.test.ts talk to a real Supabase project: `npm run test:db`.
+    exclude: ["**/node_modules/**", "**/*.db.test.ts"],
   },
 });
