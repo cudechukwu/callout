@@ -1,4 +1,7 @@
-import { AVATAR_IMAGES, hashName, initialsOf } from "@/lib/avatars";
+import { hashName, initialsOf, portraitFor } from "@/lib/avatars";
+import { DRAFT_POOL } from "@/lib/draft/draftPool";
+
+const POOL_NAMES = new Set(DRAFT_POOL.map((f) => f.name));
 
 export type Corner = "red" | "white" | "neutral";
 
@@ -27,7 +30,8 @@ interface AvatarProps {
 
 /**
  * A stylized silhouette, generated from the fighter's name (no real
- * likeness). Swaps to a supplied image if AVATAR_IMAGES is populated.
+ * likeness), or a fictional portrait from lib/avatars.ts when there is one,
+ * or a player's chosen picture via `src`.
  * Decorative: the fighter's name is always shown next to it.
  */
 export function Avatar({
@@ -40,16 +44,21 @@ export function Avatar({
 }: AvatarProps) {
   const hash = hashName(name);
 
-  if (pictureSrc || AVATAR_IMAGES.length > 0) {
-    const src = pictureSrc ?? AVATAR_IMAGES[hash % AVATAR_IMAGES.length]!;
+  const src = pictureSrc ?? portraitFor(name, POOL_NAMES.has(name));
+  if (src) {
     return (
       <div
         aria-hidden="true"
         className={`relative overflow-hidden ${className}`}
-        style={{ background: BACKDROP[corner] }}
+        style={{ background: translucent ? undefined : BACKDROP[corner] }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt="" className="h-full w-full object-cover" />
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          className={`h-full w-full object-cover object-top ${translucent ? "opacity-85" : ""}`}
+        />
       </div>
     );
   }
