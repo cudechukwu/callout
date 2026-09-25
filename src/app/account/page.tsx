@@ -2,19 +2,16 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Avatar } from "@/components/Avatar";
 import { primaryButton } from "@/components/ui";
-import { saveProfile, signIn, signOut, signUp, useAccount, type Profile } from "@/lib/account";
+import { signIn, signUp, useAccount } from "@/lib/account";
 import { DISPLAY_NAME_MAX } from "@/lib/multiplayer/types";
-import { PROFILE_PICTURES, pictureSrc } from "@/lib/profilePictures";
 import { supabaseConfigured } from "@/lib/multiplayer/client";
 import { Unavailable } from "@/components/Unavailable";
+import { ProfileScreen } from "@/components/ProfileScreen";
 
 const field =
   "cut-sm mt-1 w-full bg-panel px-4 py-3 text-lg text-bone focus:bg-panel-raised focus:outline-2 focus:outline-belt-gold";
 const label = "mt-4 block text-sm text-chalk";
-const title =
-  "font-display text-[clamp(1.9rem,6vw,2.75rem)] leading-none font-semibold tracking-[0.07em] uppercase";
 
 /** Only same-site paths, so ?next= can't send anyone off the site. */
 function safeNext(raw: string | null): string | null {
@@ -51,8 +48,9 @@ function AccountScreen() {
   }
   if (account.signedIn && next) return null;
   return account.signedIn && account.session ? (
-    <ProfileEditor
+    <ProfileScreen
       email={account.session.user.email ?? ""}
+      memberSince={account.session.user.created_at}
       profile={account.profile ?? { displayName: "", avatarKey: null }}
     />
   ) : (
@@ -140,100 +138,6 @@ function AuthForm({ guest, startWith }: { guest: boolean; startWith: "create" | 
           </p>
         )}
       </form>
-    </main>
-  );
-}
-
-function ProfileEditor({ email, profile }: { email: string; profile: Profile }) {
-  const [name, setName] = useState(profile.displayName);
-  const [avatarKey, setAvatarKey] = useState(profile.avatarKey);
-  const [status, setStatus] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    setName(profile.displayName);
-    setAvatarKey(profile.avatarKey);
-  }, [profile.displayName, profile.avatarKey]);
-
-  const dirty = name.trim() !== profile.displayName || avatarKey !== profile.avatarKey;
-
-  async function save() {
-    if (!name.trim()) return setStatus("Enter your name.");
-    setBusy(true);
-    try {
-      await saveProfile({ displayName: name.trim(), avatarKey });
-      setStatus("Saved");
-    } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Couldn't save");
-    }
-    setBusy(false);
-  }
-
-  return (
-    <main className="animate-screen-in mx-auto w-full max-w-2xl px-4 py-10">
-      <div className="flex items-center gap-5">
-        <Avatar name={name || "You"} corner="red" src={pictureSrc(avatarKey)} className="cut-sm h-24 w-24 shrink-0" />
-        <div className="min-w-0">
-          <h1 className={`${title} truncate`}>{name || "Your profile"}</h1>
-          <p className="mt-1 truncate text-sm text-chalk">{email}</p>
-        </div>
-      </div>
-
-      <h2 className="mt-8 font-display text-lg font-semibold tracking-[0.07em] uppercase">Picture</h2>
-      {PROFILE_PICTURES.length === 0 ? (
-        <p className="mt-2 text-chalk">Pictures are on the way.</p>
-      ) : (
-        <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
-          {PROFILE_PICTURES.map((picture) => {
-            const chosen = picture.key === avatarKey;
-            return (
-              <button
-                key={picture.key}
-                type="button"
-                onClick={() => {
-                  setAvatarKey(picture.key);
-                  setStatus(null);
-                }}
-                aria-label={`Picture ${picture.key}`}
-                aria-pressed={chosen}
-                className={`relative aspect-square overflow-hidden transition-transform hover:-translate-y-0.5 ${
-                  chosen ? "outline-2 outline-offset-2 outline-bone" : "opacity-80 hover:opacity-100"
-                }`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={picture.src} alt="" className="h-full w-full object-cover" />
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      <label htmlFor="profile-name" className={`${label} mt-8`}>
-        Name
-      </label>
-      <input
-        id="profile-name"
-        value={name}
-        maxLength={DISPLAY_NAME_MAX}
-        onChange={(e) => {
-          setName(e.target.value);
-          setStatus(null);
-        }}
-        className={field}
-      />
-
-      <div className="mt-6 flex items-center gap-4">
-        <button onClick={save} disabled={busy || !dirty} className={`${primaryButton} flex-1`}>
-          Save
-        </button>
-        {status && <p className="text-sm text-chalk">{status}</p>}
-      </div>
-      <button
-        onClick={() => void signOut()}
-        className="mt-8 text-sm font-medium text-chalk underline decoration-chalk/40 underline-offset-4 hover:text-bone"
-      >
-        Sign out
-      </button>
     </main>
   );
 }

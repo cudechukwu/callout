@@ -85,3 +85,31 @@ export type InviteStatus =
   | { readonly status: "not_found" };
 
 export const DISPLAY_NAME_MAX = 24;
+
+/** A player's challenge career, for their profile. */
+export interface ProfileStats {
+  readonly wins: number;
+  readonly losses: number;
+  /** e.g. { kind: "W", length: 3 }; null before the first fight. */
+  readonly streak: { readonly kind: "W" | "L"; readonly length: number } | null;
+  readonly finishes: { readonly ko: number; readonly sub: number; readonly dec: number };
+  readonly builds: { readonly count: number; readonly bestOverall: number | null; readonly averageOverall: number | null; readonly averageLeft: number | null };
+  readonly mostDrafted: readonly { readonly fighterId: number; readonly count: number }[];
+  readonly rivals: readonly {
+    readonly name: string;
+    readonly avatarKey: string | null;
+    readonly wins: number;
+    readonly losses: number;
+    readonly inviteToken: string;
+    readonly lastPlayed: string;
+  }[];
+  readonly recent: readonly {
+    readonly won: boolean;
+    readonly method: "KO" | "TKO" | "SUB" | "DEC";
+    readonly round: number;
+    readonly time: number;
+    readonly opponentName: string;
+    readonly inviteToken: string;
+    readonly playedAt: string;
+  }[];
+}

@@ -19,6 +19,7 @@ import {
   type DraftView,
   type InviteStatus,
   type Picks,
+  type ProfileStats,
   type RevealView,
   type RivalryView,
 } from "./types";
@@ -355,16 +356,18 @@ async function ensureRevealAndFight(roundId: string, loaded: LoadedRound): Promi
   const existing = check(await admin().from("fights").select("id").eq("draft_round_id", roundId).limit(1));
   if (existing.length > 0) return changed;
 
-  await createFight(loaded.seriesId, roundId);
+  await createFight(loaded.seriesId, roundId, null);
   return true;
 }
 
 /**
  * Resolves a new fight between the two builds of a draft round and stores
- * it. The series-wide fight number is unique, so if two requests race,
- * one insert fails and exactly one fight exists.
+ * it. `requestId` is the accepted Run it back that asked for it, or null
+ * for the reveal's fight. The database allows one reveal fight per round
+ * and one fight per request, so racing callers still store exactly one; a
+ * race over the next series-wide fight number just retries.
  */
-async function createFight(seriesId: string, roundId: string): Promise<void> {
+async function createFight(seriesId: string, roundId: string, requestId: string | null): Promise<void> {
   const players = check(
     await admin().from("series_participants").select("user_id, seat, display_name").eq("series_id", seriesId).order("seat")
   );
@@ -376,25 +379,33 @@ async function createFight(seriesId: string, roundId: string): Promise<void> {
   );
   if (!red || !white) throw new Error("Both builds are needed for a fight");
 
-  const { count } = await admin()
-    .from("fights")
-    .select("id", { count: "exact", head: true })
-    .eq("series_id", seriesId);
   const seed = randomBytes(4).readUInt32BE() % 2 ** 31;
   const result = simulateFight(red, white, createRng(seed));
-  const inserted = await admin().from("fights").insert({
-    series_id: seriesId,
-    draft_round_id: roundId,
-    fight_number: (count ?? 0) + 1,
-    fight_seed: String(seed),
-    engine_version: ENGINE_VERSION,
-    winner_user_id: result.winnerId,
-    method: result.method,
-    finish_round: result.round,
-    finish_time: Math.round(result.roundTimeSeconds),
-    result_json: result as never,
-  });
-  if (inserted.error && inserted.error.code !== UNIQUE_VIOLATION) throw inserted.error;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { count } = await admin()
+      .from("fights")
+      .select("id", { count: "exact", head: true })
+      .eq("series_id", seriesId);
+    const inserted = await admin().from("fights").insert({
+      series_id: seriesId,
+      draft_round_id: roundId,
+      request_id: requestId,
+      fight_number: (count ?? 0) + 1,
+      fight_seed: String(seed),
+      engine_version: ENGINE_VERSION,
+      winner_user_id: result.winnerId,
+      method: result.method,
+      finish_round: result.round,
+      finish_time: Math.round(result.roundTimeSeconds),
+      result_json: result as never,
+    });
+    if (!inserted.error) return;
+    if (inserted.error.code !== UNIQUE_VIOLATION) throw inserted.error;
+    // Someone else already stored this fight: done.
+    if (!inserted.error.message.includes("fight_number")) return;
+    // Another fight took this number: count again and retry.
+  }
+  throw new Error("Couldn't number the fight");
 }
 
 async function loadReveal(roundId: string, userId: string, opponentId: string): Promise<RevealView> {
@@ -544,7 +555,7 @@ export async function respondRivalry(userId: string, roundId: unknown, requestId
   if (moved.length === 0 || !accepting) return getView(userId, id);
 
   if (request.kind === "run_it_back") {
-    await createFight(loaded.seriesId, id);
+    await createFight(loaded.seriesId, id, request.id);
   } else {
     const players = check(await admin().from("series_participants").select("user_id").eq("series_id", loaded.seriesId));
     const rounds = check(await admin().from("draft_rounds").select("round_number").eq("series_id", loaded.seriesId));
@@ -657,4 +668,122 @@ export async function lock(userId: string, roundId: unknown): Promise<DraftView>
       .is("locked_at", null)
   );
   return getView(userId, id);
+}
+
+/**
+ * Everything the profile screen shows, from the player's challenges: record,
+ * streak, how fights ended, their builds, rivals and recent fights.
+ */
+export async function profileStats(userId: string): Promise<ProfileStats> {
+  const mine = check(await admin().from("series_participants").select("series_id").eq("user_id", userId));
+  const seriesIds = mine.map((m) => m.series_id);
+  const empty: ProfileStats = {
+    wins: 0,
+    losses: 0,
+    streak: null,
+    finishes: { ko: 0, sub: 0, dec: 0 },
+    builds: { count: 0, bestOverall: null, averageOverall: null, averageLeft: null },
+    mostDrafted: [],
+    rivals: [],
+    recent: [],
+  };
+  if (seriesIds.length === 0) return empty;
+
+  const [participants, series, fights, builds] = await Promise.all([
+    admin().from("series_participants").select("series_id, user_id, display_name").in("series_id", seriesIds),
+    admin().from("series").select("id, invite_token").in("id", seriesIds),
+    admin()
+      .from("fights")
+      .select("series_id, winner_user_id, method, finish_round, finish_time, created_at")
+      .in("series_id", seriesIds)
+      .order("created_at", { ascending: false }),
+    admin().from("draft_builds").select("actual_ovr, best_seen_ovr, build_snapshot").eq("user_id", userId).not("actual_ovr", "is", null),
+  ]).then((results) => results.map(check) as [
+    { series_id: string; user_id: string; display_name: string }[],
+    { id: string; invite_token: string }[],
+    { series_id: string; winner_user_id: string | null; method: string; finish_round: number; finish_time: number; created_at: string }[],
+    { actual_ovr: number | null; best_seen_ovr: number | null; build_snapshot: unknown }[],
+  ]);
+
+  const tokenOf = new Map(series.map((s) => [s.id, s.invite_token]));
+  const opponentOf = new Map(
+    participants.filter((p) => p.user_id !== userId).map((p) => [p.series_id, { id: p.user_id, name: p.display_name }])
+  );
+  const profiles = check(
+    await admin().from("profiles").select("id, avatar_key").in("id", [...new Set([...opponentOf.values()].map((o) => o.id))])
+  );
+  const avatarOf = new Map(profiles.map((p) => [p.id, p.avatar_key]));
+
+  const decided = fights.filter((f) => f.winner_user_id);
+  const wins = decided.filter((f) => f.winner_user_id === userId);
+  let streak: ProfileStats["streak"] = null;
+  for (const fight of decided) {
+    const kind = fight.winner_user_id === userId ? "W" : "L";
+    if (!streak) streak = { kind, length: 1 };
+    else if (streak.kind === kind) streak = { kind, length: streak.length + 1 };
+    else break;
+  }
+
+  const overalls = builds.map((b) => b.actual_ovr!);
+  const lefts = builds.filter((b) => b.best_seen_ovr != null).map((b) => Math.max(0, b.best_seen_ovr! - b.actual_ovr!));
+  const average = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
+  const drafted = new Map<number, number>();
+  for (const build of builds) for (const pick of picksOf(build.build_snapshot)) drafted.set(pick.fighterId, (drafted.get(pick.fighterId) ?? 0) + 1);
+
+  const rivals = new Map<string, ProfileStats["rivals"][number] & { opponentId: string }>();
+  for (const [seriesId, opponent] of opponentOf) {
+    const seriesFights = decided.filter((f) => f.series_id === seriesId);
+    const existing = rivals.get(opponent.id);
+    const last = fights.find((f) => f.series_id === seriesId)?.created_at ?? "";
+    const entry = existing ?? {
+      opponentId: opponent.id,
+      name: opponent.name,
+      avatarKey: avatarOf.get(opponent.id) ?? null,
+      wins: 0,
+      losses: 0,
+      inviteToken: tokenOf.get(seriesId)!,
+      lastPlayed: last,
+    };
+    const w = seriesFights.filter((f) => f.winner_user_id === userId).length;
+    rivals.set(opponent.id, {
+      ...entry,
+      wins: entry.wins + w,
+      losses: entry.losses + seriesFights.length - w,
+      ...(last > entry.lastPlayed ? { lastPlayed: last, inviteToken: tokenOf.get(seriesId)!, name: opponent.name } : {}),
+    });
+  }
+
+  return {
+    wins: wins.length,
+    losses: decided.length - wins.length,
+    streak,
+    finishes: {
+      ko: wins.filter((f) => f.method === "KO" || f.method === "TKO").length,
+      sub: wins.filter((f) => f.method === "SUB").length,
+      dec: wins.filter((f) => f.method === "DEC").length,
+    },
+    builds: {
+      count: builds.length,
+      bestOverall: overalls.length ? Math.max(...overalls) : null,
+      averageOverall: average(overalls),
+      averageLeft: average(lefts),
+    },
+    mostDrafted: [...drafted]
+      .sort((a, b) => b[1] - a[1] || a[0] - b[0])
+      .slice(0, 5)
+      .map(([fighterId, count]) => ({ fighterId, count })),
+    rivals: [...rivals.values()]
+      .filter((r) => r.wins + r.losses > 0)
+      .sort((a, b) => b.wins + b.losses - (a.wins + a.losses) || b.lastPlayed.localeCompare(a.lastPlayed))
+      .map(({ opponentId: _, ...rival }) => rival),
+    recent: decided.slice(0, 8).map((f) => ({
+      won: f.winner_user_id === userId,
+      method: f.method as ProfileStats["recent"][number]["method"],
+      round: f.finish_round,
+      time: f.finish_time,
+      opponentName: opponentOf.get(f.series_id)?.name ?? "Opponent",
+      inviteToken: tokenOf.get(f.series_id)!,
+      playedAt: f.created_at,
+    })),
+  };
 }

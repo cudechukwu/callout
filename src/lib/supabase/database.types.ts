@@ -196,6 +196,7 @@ export type Database = {
           finish_time: number
           id: string
           method: string
+          request_id: string | null
           result_json: Json
           series_id: string
           winner_user_id: string | null
@@ -210,6 +211,7 @@ export type Database = {
           finish_time: number
           id?: string
           method: string
+          request_id?: string | null
           result_json: Json
           series_id: string
           winner_user_id?: string | null
@@ -224,6 +226,7 @@ export type Database = {
           finish_time?: number
           id?: string
           method?: string
+          request_id?: string | null
           result_json?: Json
           series_id?: string
           winner_user_id?: string | null
@@ -234,6 +237,13 @@ export type Database = {
             columns: ["draft_round_id"]
             isOneToOne: false
             referencedRelation: "draft_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fights_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "series_requests"
             referencedColumns: ["id"]
           },
           {

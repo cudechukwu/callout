@@ -170,6 +170,14 @@ describe("database constraints", () => {
     expect(error?.code).toBe("23505");
   });
 
+  it("allows only one reveal fight per draft round, whatever its number", async () => {
+    const fight = { series_id: seriesId, draft_round_id: roundId, fight_seed: "r", engine_version: "0.1", method: "DEC", finish_round: 3, finish_time: 300, result_json: {} };
+    expect((await admin.from("fights").insert({ ...fight, fight_number: 90 })).error).toBeNull();
+    const second = await admin.from("fights").insert({ ...fight, fight_number: 91 });
+    expect(second.error?.code).toBe("23505");
+    await admin.from("fights").delete().eq("series_id", seriesId).eq("fight_number", 90);
+  });
+
   it("allows only one pending rivalry request per series, and series-wide fight numbers", async () => {
     const fight = { series_id: seriesId, draft_round_id: roundId, fight_seed: "f", engine_version: "0.1", method: "DEC", finish_round: 3, finish_time: 300, result_json: {} };
     const [first] = await must(admin.from("fights").insert({ ...fight, fight_number: 1 }).select("id"));

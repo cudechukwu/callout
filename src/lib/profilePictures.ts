@@ -1,14 +1,19 @@
+import { MEN_PORTRAITS, WOMEN_PORTRAITS } from "@/lib/portraits.generated";
+
 /**
- * Pictures a player can choose for their profile. Files live in
- * /public/pfp; the key is what the profiles table stores, so keep keys
- * stable once players have picked them (add new ones, don't rename).
+ * Pictures a player can choose for their profile: for now, the fighter
+ * portraits. The key (e.g. "m-01") is what the profiles table stores, so a
+ * portrait that is later deleted just falls back to a silhouette.
  */
 export interface ProfilePicture {
   readonly key: string;
   readonly src: string;
 }
 
-export const PROFILE_PICTURES: readonly ProfilePicture[] = [];
+export const PROFILE_PICTURES: readonly ProfilePicture[] = [...MEN_PORTRAITS, ...WOMEN_PORTRAITS].map((src) => ({
+  key: src.replace(/^.*\//, "").replace(/\.jpg$/, ""),
+  src,
+}));
 
 const BY_KEY = new Map(PROFILE_PICTURES.map((p) => [p.key, p.src]));
 

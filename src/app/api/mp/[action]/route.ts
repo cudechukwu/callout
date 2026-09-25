@@ -6,6 +6,7 @@ import {
   lock,
   lookupInvite,
   MpError,
+  profileStats,
   requestRivalry,
   requireUser,
   respondRivalry,
@@ -34,6 +35,8 @@ export async function POST(request: Request, context: { params: Promise<{ action
         return Response.json(await act(userId, body.roundId, body.sequence, body.action));
       case "lock":
         return Response.json(await lock(userId, body.roundId));
+      case "profile":
+        return Response.json(await profileStats(userId));
       case "request":
         return Response.json(await requestRivalry(userId, body.roundId, body.kind));
       case "respond":
