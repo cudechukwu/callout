@@ -8,6 +8,8 @@ export interface RevealView {
   readonly myUserId: string;
   readonly opponentUserId: string;
   readonly opponentPicks: Picks;
+  readonly me: BuildSummary | null;
+  readonly opponent: BuildSummary | null;
   /** Null for the moment between the reveal and the fight being stored. */
   readonly fight: {
     readonly id: string;
@@ -15,6 +17,23 @@ export interface RevealView {
     /** The stored result: playback never re-simulates. */
     readonly result: FightResult;
   } | null;
+}
+
+/** One player's side of the compare screen, from the snapshot frozen at lock. */
+export interface BuildSummary {
+  readonly overall: number;
+  /** Best build possible from the boards this player picked from. */
+  readonly bestSeen: number;
+}
+
+/** The series around this draft: record, and any rematch/redraft request. */
+export interface RivalryView {
+  readonly wins: number;
+  readonly losses: number;
+  readonly fights: number;
+  readonly pending: { readonly id: string; readonly kind: "run_it_back" | "redraft"; readonly mine: boolean } | null;
+  /** The newest draft round in the series; differs from this one after a redraft. */
+  readonly latestRoundId: string;
 }
 
 /**
@@ -42,6 +61,7 @@ export interface DraftView {
   readonly locked: boolean;
   readonly roundStatus: "drafting" | "revealed" | "abandoned";
   readonly reveal: RevealView | null;
+  readonly rivalry: RivalryView;
 }
 
 /** What an invite link resolves to for the person opening it. */

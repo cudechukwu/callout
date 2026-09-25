@@ -13,7 +13,15 @@ import type { AttributeSelections, FighterSnapshot, FightResult } from "@/lib/si
 import type { Database } from "@/lib/supabase/database.types";
 import { ENGINE_VERSION, POOL_VERSION, RATINGS_VERSION } from "@/lib/versions";
 import { applyDraftAction, replayDraft, type DraftActionInput } from "./replay";
-import { DISPLAY_NAME_MAX, type DraftView, type InviteStatus, type Picks, type RevealView } from "./types";
+import {
+  DISPLAY_NAME_MAX,
+  type BuildSummary,
+  type DraftView,
+  type InviteStatus,
+  type Picks,
+  type RevealView,
+  type RivalryView,
+} from "./types";
 
 /**
  * Server commands for friend challenges (MULTIPLAYER_DESIGN.md > Server
@@ -273,6 +281,7 @@ async function toView(userId: string, roundId: string, loaded: LoadedRound): Pro
     locked: Boolean(loaded.lockedAt.get(userId)),
     roundStatus: loaded.status,
     reveal: loaded.status === "revealed" && opponent ? await loadReveal(roundId, userId, opponent.userId) : null,
+    rivalry: await loadRivalry(loaded.seriesId, userId),
   };
 }
 
@@ -326,8 +335,18 @@ async function ensureRevealAndFight(roundId: string, loaded: LoadedRound): Promi
   const existing = check(await admin().from("fights").select("id").eq("draft_round_id", roundId).limit(1));
   if (existing.length > 0) return changed;
 
+  await createFight(loaded.seriesId, roundId);
+  return true;
+}
+
+/**
+ * Resolves a new fight between the two builds of a draft round and stores
+ * it. The series-wide fight number is unique, so if two requests race,
+ * one insert fails and exactly one fight exists.
+ */
+async function createFight(seriesId: string, roundId: string): Promise<void> {
   const players = check(
-    await admin().from("series_participants").select("user_id, seat, display_name").eq("series_id", loaded.seriesId).order("seat")
+    await admin().from("series_participants").select("user_id, seat, display_name").eq("series_id", seriesId).order("seat")
   );
   const builds = check(
     await admin().from("draft_builds").select("user_id, build_snapshot").eq("draft_round_id", roundId)
@@ -335,16 +354,16 @@ async function ensureRevealAndFight(roundId: string, loaded: LoadedRound): Promi
   const [red, white] = players.map((p) =>
     fighterFromPicks(p.user_id, p.display_name, picksOf(builds.find((b) => b.user_id === p.user_id)?.build_snapshot))
   );
-  if (!red || !white) return changed;
+  if (!red || !white) throw new Error("Both builds are needed for a fight");
 
   const { count } = await admin()
     .from("fights")
     .select("id", { count: "exact", head: true })
-    .eq("series_id", loaded.seriesId);
+    .eq("series_id", seriesId);
   const seed = randomBytes(4).readUInt32BE() % 2 ** 31;
   const result = simulateFight(red, white, createRng(seed));
   const inserted = await admin().from("fights").insert({
-    series_id: loaded.seriesId,
+    series_id: seriesId,
     draft_round_id: roundId,
     fight_number: (count ?? 0) + 1,
     fight_seed: String(seed),
@@ -356,33 +375,174 @@ async function ensureRevealAndFight(roundId: string, loaded: LoadedRound): Promi
     result_json: result as never,
   });
   if (inserted.error && inserted.error.code !== UNIQUE_VIOLATION) throw inserted.error;
-  return true;
 }
 
 async function loadReveal(roundId: string, userId: string, opponentId: string): Promise<RevealView> {
-  const build = maybe(
+  const builds = check(
     await admin()
       .from("draft_builds")
-      .select("build_snapshot")
+      .select("user_id, build_snapshot, actual_ovr, best_seen_ovr")
       .eq("draft_round_id", roundId)
-      .eq("user_id", opponentId)
-      .maybeSingle()
   );
+  const summary = (id: string): BuildSummary | null => {
+    const build = builds.find((b) => b.user_id === id);
+    return build?.actual_ovr != null && build.best_seen_ovr != null
+      ? { overall: build.actual_ovr, bestSeen: build.best_seen_ovr }
+      : null;
+  };
+  // The newest fight of this round: after Run it back, that's the rematch.
   const fight = maybe(
     await admin()
       .from("fights")
       .select("id, fight_number, result_json")
       .eq("draft_round_id", roundId)
-      .order("fight_number")
+      .order("fight_number", { ascending: false })
       .limit(1)
       .maybeSingle()
   );
   return {
     myUserId: userId,
     opponentUserId: opponentId,
-    opponentPicks: picksOf(build?.build_snapshot),
+    opponentPicks: picksOf(builds.find((b) => b.user_id === opponentId)?.build_snapshot),
+    me: summary(userId),
+    opponent: summary(opponentId),
     fight: fight ? { id: fight.id, number: fight.fight_number, result: fight.result_json as unknown as FightResult } : null,
   };
+}
+
+async function loadRivalry(seriesId: string, userId: string): Promise<RivalryView> {
+  const fights = check(
+    await admin().from("fights").select("id, winner_user_id, fight_number").eq("series_id", seriesId).order("fight_number")
+  );
+  const latestFight = fights[fights.length - 1];
+  const pending = maybe(
+    await admin()
+      .from("series_requests")
+      .select("id, kind, requested_by, after_fight_id")
+      .eq("series_id", seriesId)
+      .eq("status", "pending")
+      .maybeSingle()
+  );
+  const current = pending && pending.after_fight_id === latestFight?.id ? pending : null;
+  return {
+    wins: fights.filter((f) => f.winner_user_id === userId).length,
+    losses: fights.filter((f) => f.winner_user_id && f.winner_user_id !== userId).length,
+    fights: fights.length,
+    pending: current
+      ? { id: current.id, kind: current.kind as "run_it_back" | "redraft", mine: current.requested_by === userId }
+      : null,
+    latestRoundId: await latestRoundId(seriesId),
+  };
+}
+
+/**
+ * Asks for another fight (same builds) or a redraft (new cards). Needs the
+ * other player's consent, except that if they already asked for the same
+ * thing, asking back is agreeing. One pending request per series (a unique
+ * index), and it names the fight it follows, so a stale request can never
+ * be accepted after the series moved on.
+ */
+export async function requestRivalry(userId: string, roundId: unknown, rawKind: unknown): Promise<DraftView> {
+  if (rawKind !== "run_it_back" && rawKind !== "redraft") throw new MpError(400, "bad_kind", "Unknown request");
+  const loaded = await loadRound(userId, roundId);
+  const id = roundId as string;
+  const rivalry = await loadRivalry(loaded.seriesId, userId);
+  if (rivalry.latestRoundId !== id || loaded.status !== "revealed") {
+    throw new MpError(409, "moved_on", "This challenge has moved on");
+  }
+  const latestFight = maybe(
+    await admin()
+      .from("fights")
+      .select("id")
+      .eq("series_id", loaded.seriesId)
+      .order("fight_number", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+  );
+  if (!latestFight) throw new MpError(409, "no_fight", "Fight first");
+
+  // Clear out a request left over from an earlier fight.
+  await admin()
+    .from("series_requests")
+    .update({ status: "expired", resolved_at: new Date().toISOString() })
+    .eq("series_id", loaded.seriesId)
+    .eq("status", "pending")
+    .neq("after_fight_id", latestFight.id);
+
+  const pending = rivalry.pending;
+  if (pending) {
+    if (pending.mine) return getView(userId, id);
+    if (pending.kind === rawKind) return respondRivalry(userId, id, pending.id, true);
+    throw new MpError(409, "other_pending", "Answer their request first");
+  }
+
+  const inserted = await admin().from("series_requests").insert({
+    series_id: loaded.seriesId,
+    kind: rawKind,
+    after_fight_id: latestFight.id,
+    requested_by: userId,
+  });
+  if (inserted.error?.code === UNIQUE_VIOLATION) {
+    // They asked at the same moment. Same thing: that's agreement.
+    const theirs = (await loadRivalry(loaded.seriesId, userId)).pending;
+    if (theirs && !theirs.mine && theirs.kind === rawKind) return respondRivalry(userId, id, theirs.id, true);
+    return getView(userId, id);
+  }
+  check(inserted);
+  return getView(userId, id);
+}
+
+/**
+ * Accepts or declines the other player's request, or withdraws your own.
+ * Only one call can move a request out of "pending" (conditional update),
+ * so a double accept still makes one fight or one new draft.
+ */
+export async function respondRivalry(userId: string, roundId: unknown, requestId: unknown, accept: unknown): Promise<DraftView> {
+  if (typeof requestId !== "string") throw new MpError(400, "bad_request", "Missing request");
+  const loaded = await loadRound(userId, roundId);
+  const id = roundId as string;
+  const request = maybe(
+    await admin()
+      .from("series_requests")
+      .select("id, kind, requested_by, status")
+      .eq("id", requestId)
+      .eq("series_id", loaded.seriesId)
+      .maybeSingle()
+  );
+  if (!request || request.status !== "pending") return getView(userId, id);
+  const mine = request.requested_by === userId;
+  const accepting = accept === true && !mine;
+
+  const moved = check(
+    await admin()
+      .from("series_requests")
+      .update({ status: accepting ? "accepted" : "declined", resolved_at: new Date().toISOString() })
+      .eq("id", requestId)
+      .eq("status", "pending")
+      .select("id")
+  );
+  if (moved.length === 0 || !accepting) return getView(userId, id);
+
+  if (request.kind === "run_it_back") {
+    await createFight(loaded.seriesId, id);
+  } else {
+    const players = check(await admin().from("series_participants").select("user_id").eq("series_id", loaded.seriesId));
+    const rounds = check(await admin().from("draft_rounds").select("round_number").eq("series_id", loaded.seriesId));
+    const next = Math.max(...rounds.map((r) => r.round_number)) + 1;
+    const created = await createDraftRoundSafely(loaded.seriesId, next, players.map((p) => p.user_id));
+    if (created) return getView(userId, created);
+  }
+  return getView(userId, id);
+}
+
+/** Creates the next draft round unless a racing request already did. */
+async function createDraftRoundSafely(seriesId: string, roundNumber: number, userIds: string[]): Promise<string | null> {
+  try {
+    return await createDraftRound(seriesId, roundNumber, userIds);
+  } catch (error) {
+    if ((error as { code?: string }).code === UNIQUE_VIOLATION) return null;
+    throw error;
+  }
 }
 
 function parseAction(raw: unknown): DraftActionInput {

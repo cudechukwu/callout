@@ -1,4 +1,15 @@
-import { act, createSeries, getView, joinSeries, lock, lookupInvite, MpError, requireUserId } from "@/lib/multiplayer/server";
+import {
+  act,
+  createSeries,
+  getView,
+  joinSeries,
+  lock,
+  lookupInvite,
+  MpError,
+  requestRivalry,
+  requireUserId,
+  respondRivalry,
+} from "@/lib/multiplayer/server";
 
 /**
  * One endpoint per challenge command: POST /api/mp/<action> with a JSON
@@ -22,6 +33,10 @@ export async function POST(request: Request, context: { params: Promise<{ action
         return Response.json(await act(userId, body.roundId, body.sequence, body.action));
       case "lock":
         return Response.json(await lock(userId, body.roundId));
+      case "request":
+        return Response.json(await requestRivalry(userId, body.roundId, body.kind));
+      case "respond":
+        return Response.json(await respondRivalry(userId, body.roundId, body.requestId, body.accept));
       default:
         return Response.json({ error: "not_found" }, { status: 404 });
     }

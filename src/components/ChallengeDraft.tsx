@@ -32,34 +32,53 @@ function toBoard(view: DraftView): DraftBoardState {
   };
 }
 
-export function ChallengeDraft({ roundId }: { roundId: string }) {
+export function ChallengeDraft({ roundId: initialRoundId }: { roundId: string }) {
+  // Follows the series: after a redraft the next draft round takes over.
+  const [roundId, setRoundId] = useState(initialRoundId);
   const [view, setView] = useState<DraftView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
 
+  // Responses can arrive out of order, e.g. a slow one for the round that a
+  // redraft just replaced. Only the current round's view is shown, and the
+  // page only ever moves forward to the series' newest round.
+  const currentRound = useRef(roundId);
+  const accept = useCallback((next: DraftView) => {
+    const latest = next.rivalry.latestRoundId;
+    if (latest !== currentRound.current && next.roundId !== latest) {
+      currentRound.current = latest;
+      setRoundId(latest);
+      return;
+    }
+    if (next.roundId === latest && latest !== currentRound.current) {
+      currentRound.current = latest;
+      setRoundId(latest);
+    }
+    if (next.roundId === currentRound.current) setView(next);
+  }, []);
+
   const refresh = useCallback(async () => {
     if (inFlight.current) return;
     try {
-      setView(await mp<DraftView>("view", { roundId }));
+      accept(await mp<DraftView>("view", { roundId }));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load the draft");
     }
-  }, [roundId]);
+  }, [roundId, accept]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  // Live updates: the opponent joining, picking and locking in.
-  // Stops once the fight is stored: nothing about it can change, and a
-  // refresh mid-playback must not restart the viewer.
+  // Live updates: the opponent joining, picking, locking in, asking for a
+  // rematch, and new fights. After the fight, polling slows right down.
   const seriesId = view?.seriesId;
   const settled = Boolean(view?.reveal?.fight);
   useEffect(() => {
-    if (!seriesId || settled) return;
+    if (!seriesId) return;
     const supabase = supabaseBrowser();
     const channel = supabase
       .channel(`round:${roundId}`)
@@ -73,10 +92,20 @@ export function ChallengeDraft({ roundId }: { roundId: string }) {
         { event: "INSERT", schema: "public", table: "series_participants", filter: `series_id=eq.${seriesId}` },
         () => void refresh()
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "series_requests", filter: `series_id=eq.${seriesId}` },
+        () => void refresh()
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "fights", filter: `series_id=eq.${seriesId}` },
+        () => void refresh()
+      )
       .subscribe();
     const poll = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
-    }, POLL_MS);
+    }, settled ? POLL_MS * 2 : POLL_MS);
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
     return () => {
@@ -86,7 +115,11 @@ export function ChallengeDraft({ roundId }: { roundId: string }) {
     };
   }, [roundId, seriesId, settled, refresh]);
 
-  async function send(action: "act" | "lock", body: Record<string, unknown>, minDelay = 0) {
+  async function send(
+    action: "act" | "lock" | "request" | "respond",
+    body: Record<string, unknown>,
+    minDelay = 0
+  ) {
     if (!view || inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -95,7 +128,7 @@ export function ChallengeDraft({ roundId }: { roundId: string }) {
         mp<DraftView>(action, { roundId, ...body }),
         new Promise((resolve) => window.setTimeout(resolve, minDelay)),
       ]);
-      setView(next);
+      accept(next);
       setError(null);
     } catch (e) {
       setError(e instanceof MpRequestError ? e.message : "Connection problem. Try again.");
@@ -119,7 +152,19 @@ export function ChallengeDraft({ roundId }: { roundId: string }) {
   }
 
   if (view.reveal?.fight) {
-    return <ChallengeFight view={view} reveal={{ ...view.reveal, fight: view.reveal.fight }} />;
+    return (
+      <>
+        <ChallengeFight
+          key={view.reveal.fight.id}
+          view={view}
+          reveal={{ ...view.reveal, fight: view.reveal.fight }}
+          busy={busy}
+          onRequest={(kind) => void send("request", { kind })}
+          onRespond={(requestId, accept) => void send("respond", { requestId, accept })}
+        />
+        {error && <Toast message={error} />}
+      </>
+    );
   }
 
   const opponentLine = view.opponent ? (
