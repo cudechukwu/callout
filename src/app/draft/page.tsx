@@ -35,7 +35,8 @@ type Phase =
   | "opponentReveal"
   | "fighting"
   | "result"
-  | "rampageSummary";
+  | "rampageSummary"
+  | "fighterView";
 
 const NAME_MIN = 3;
 const NAME_MAX = 20;
@@ -419,8 +420,33 @@ export default function DraftPage() {
           overall={playerOverall}
           fights={rampageFights}
           onRampageAgain={handleStartRampage}
+          onViewFighter={() => setPhase("fighterView")}
           onNewFighter={handleNewFighter}
         />
+      </>
+    );
+  }
+
+  if (phase === "fighterView" && playerSnapshot) {
+    return (
+      <>
+        {hud}
+        <main className="animate-screen-in mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8">
+          <FighterSheet
+            name={playerSnapshot.name}
+            selections={playerSnapshot.selections}
+            overall={playerOverall}
+            calls={yourCalls}
+          />
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button onClick={() => setPhase("rampageSummary")} className={`${primaryButton} sm:flex-1`}>
+              Back to results
+            </button>
+            <button onClick={handleStartRampage} className={`${secondaryButton} sm:flex-1`}>
+              Rampage again
+            </button>
+          </div>
+        </main>
       </>
     );
   }

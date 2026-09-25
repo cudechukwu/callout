@@ -17,6 +17,8 @@ interface RampageSummaryProps {
   overall: number;
   fights: readonly FightRecord[];
   onRampageAgain: () => void;
+  /** Go back to the fighter sheet (build, style, your calls). */
+  onViewFighter: () => void;
   onNewFighter: () => void;
 }
 
@@ -25,6 +27,7 @@ export function RampageSummary({
   overall,
   fights,
   onRampageAgain,
+  onViewFighter,
   onNewFighter,
 }: RampageSummaryProps) {
   const summary = summarizeRampage(fights);
@@ -94,11 +97,20 @@ export function RampageSummary({
         <RunGrid fights={fights} />
       </section>
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-        <button onClick={onRampageAgain} className={`${primaryButton} sm:flex-1`}>
+      {/* Pinned, because this screen is long and the next step should always be in reach. */}
+      <div className="sticky bottom-0 -mx-4 mt-6 flex flex-col gap-3 bg-gradient-to-t from-canvas via-canvas/95 to-transparent px-4 pt-6 pb-3 sm:flex-row">
+        <button onClick={onRampageAgain} className={`${primaryButton} sm:flex-[2]`}>
           Rampage again
         </button>
-        <button onClick={onNewFighter} className={`${secondaryButton} sm:flex-1`}>
+        <button onClick={onViewFighter} className={`${secondaryButton} sm:flex-1`}>
+          View my fighter
+        </button>
+      </div>
+      <div className="pt-2 pb-6 text-center">
+        <button
+          onClick={onNewFighter}
+          className="text-sm font-medium text-chalk underline decoration-chalk/40 underline-offset-4 transition-colors hover:text-bone"
+        >
           Build new fighter
         </button>
       </div>
