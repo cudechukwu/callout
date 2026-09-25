@@ -39,7 +39,6 @@ export function FighterSheet({
 }: FighterSheetProps) {
   const [showBuild, setShowBuild] = useState(false);
   const [showReview, setShowReview] = useState(false);
-  const [showMissName, setShowMissName] = useState(false);
   const identity = computeIdentity(selections);
   const barColor = corner === "white" ? "bg-corner-white" : "bg-corner-red";
 
@@ -196,19 +195,6 @@ export function FighterSheet({
                           <span className="block text-sm text-chalk">
                             A card on your board would have added +{calls.biggestMiss.gain} overall.
                           </span>
-                          {showMissName ? (
-                            <span className="mt-1 block text-sm text-bone">
-                              {calls.biggestMiss.betterName} was there instead of {calls.biggestMiss.pickedName}.
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setShowMissName(true)}
-                              className="mt-1 text-sm font-medium text-bone/80 underline decoration-bone/30 underline-offset-4 transition-colors hover:text-bone"
-                            >
-                              Show me
-                            </button>
-                          )}
                         </>
                       ) : (
                         <span className="font-medium text-bone">No real misses</span>
