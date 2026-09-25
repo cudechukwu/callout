@@ -10,6 +10,8 @@ interface Side {
   overall: number;
   selections: AttributeSelections;
   record?: { wins: number; losses: number };
+  /** Line under the name; defaults to "CPU" / the record / "Your fighter". */
+  tag?: string;
 }
 
 interface TaleOfTapeProps {
@@ -31,7 +33,8 @@ function Header({ side, corner }: { side: Side; corner: "red" | "white" }) {
           {side.name}
         </p>
         <p className="mt-1 text-sm text-chalk">
-          {corner === "white" ? "CPU" : side.record ? `${side.record.wins}–${side.record.losses}` : "Your fighter"}
+          {side.tag ??
+            (corner === "white" ? "CPU" : side.record ? `${side.record.wins}–${side.record.losses}` : "Your fighter")}
         </p>
         <p className="mt-2 font-display text-5xl leading-[0.8] font-bold text-belt-gold sm:text-6xl">
           <span className="font-numeric">{side.overall}</span>

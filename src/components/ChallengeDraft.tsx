@@ -7,6 +7,7 @@ import { DRAFT_POOL } from "@/lib/draft/draftPool";
 import { mp, MpRequestError, supabaseBrowser } from "@/lib/multiplayer/client";
 import type { DraftView } from "@/lib/multiplayer/types";
 import { Avatar } from "@/components/Avatar";
+import { ChallengeFight } from "@/components/ChallengeFight";
 import { DraftScreen, type DraftBoardState } from "@/components/DraftScreen";
 import { primaryButton } from "@/components/ui";
 
@@ -53,9 +54,12 @@ export function ChallengeDraft({ roundId }: { roundId: string }) {
   }, [refresh]);
 
   // Live updates: the opponent joining, picking and locking in.
+  // Stops once the fight is stored: nothing about it can change, and a
+  // refresh mid-playback must not restart the viewer.
   const seriesId = view?.seriesId;
+  const settled = Boolean(view?.reveal?.fight);
   useEffect(() => {
-    if (!seriesId) return;
+    if (!seriesId || settled) return;
     const supabase = supabaseBrowser();
     const channel = supabase
       .channel(`round:${roundId}`)
@@ -80,7 +84,7 @@ export function ChallengeDraft({ roundId }: { roundId: string }) {
       window.clearInterval(poll);
       window.removeEventListener("focus", onFocus);
     };
-  }, [roundId, seriesId, refresh]);
+  }, [roundId, seriesId, settled, refresh]);
 
   async function send(action: "act" | "lock", body: Record<string, unknown>, minDelay = 0) {
     if (!view || inFlight.current) return;
@@ -112,6 +116,10 @@ export function ChallengeDraft({ roundId }: { roundId: string }) {
         <p className="text-chalk">{error ?? "Loading the draft…"}</p>
       </main>
     );
+  }
+
+  if (view.reveal?.fight) {
+    return <ChallengeFight view={view} reveal={{ ...view.reveal, fight: view.reveal.fight }} />;
   }
 
   const opponentLine = view.opponent ? (

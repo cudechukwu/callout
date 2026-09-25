@@ -30,8 +30,10 @@ interface FightResultScreenProps {
   onStartRampage?: () => void;
   /** Single fights only: face a different opponent. */
   onNewOpponent?: () => void;
-  onRematch: () => void;
-  onNewFighter: () => void;
+  onRematch?: () => void;
+  onNewFighter?: () => void;
+  /** Replaces the default next steps (a challenge has its own). */
+  actions?: React.ReactNode;
 }
 
 function StatRow({
@@ -78,6 +80,7 @@ export function FightResultScreen({
   onNewOpponent,
   onRematch,
   onNewFighter,
+  actions,
 }: FightResultScreenProps) {
   const won = result.winnerId === playerId;
   const me = result.stats[playerId]!;
@@ -148,7 +151,9 @@ export function FightResultScreen({
         />
       </section>
 
-      {rampage ? (
+      {actions ? (
+        <div className="mt-6">{actions}</div>
+      ) : rampage ? (
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           {rampage.fightNumber < rampage.total ? (
             <>

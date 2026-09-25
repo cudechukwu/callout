@@ -5,11 +5,15 @@ import type { VisibleAttribute } from "@/lib/data/types";
 import { computeYourCalls } from "@/lib/draft/answerSheet";
 import { computeOverall } from "@/lib/draft/overall";
 import { generateDraftPlan, type DraftPlan } from "@/lib/draft/plan";
+import { DRAFT_POOL } from "@/lib/draft/draftPool";
 import { isDraftComplete, toFighterSnapshot, type DraftSessionState } from "@/lib/draft/session";
+import { simulateFight } from "@/lib/simulation/engine";
+import { createRng } from "@/lib/simulation/rng";
+import type { AttributeSelections, FighterSnapshot, FightResult } from "@/lib/simulation/types";
 import type { Database } from "@/lib/supabase/database.types";
 import { ENGINE_VERSION, POOL_VERSION, RATINGS_VERSION } from "@/lib/versions";
 import { applyDraftAction, replayDraft, type DraftActionInput } from "./replay";
-import { DISPLAY_NAME_MAX, type DraftView, type InviteStatus } from "./types";
+import { DISPLAY_NAME_MAX, type DraftView, type InviteStatus, type Picks, type RevealView } from "./types";
 
 /**
  * Server commands for friend challenges (MULTIPLAYER_DESIGN.md > Server
@@ -268,12 +272,117 @@ async function toView(userId: string, roundId: string, loaded: LoadedRound): Pro
     sequence: loaded.actionCount,
     locked: Boolean(loaded.lockedAt.get(userId)),
     roundStatus: loaded.status,
+    reveal: loaded.status === "revealed" && opponent ? await loadReveal(roundId, userId, opponent.userId) : null,
   };
 }
 
 export async function getView(userId: string, roundId: unknown): Promise<DraftView> {
-  const loaded = await loadRound(userId, roundId);
+  let loaded = await loadRound(userId, roundId);
+  if (await ensureRevealAndFight(roundId as string, loaded)) loaded = await loadRound(userId, roundId);
   return toView(userId, roundId as string, loaded);
+}
+
+type StoredPicks = { picks: Record<string, number> };
+
+function picksOf(snapshot: unknown): Picks {
+  const picks = (snapshot as StoredPicks | null)?.picks ?? {};
+  return Object.entries(picks).map(([attribute, fighterId]) => ({
+    attribute: attribute as VisibleAttribute,
+    fighterId,
+  }));
+}
+
+const POOL_BY_ID = new Map(DRAFT_POOL.map((f) => [f.id, f]));
+
+function fighterFromPicks(id: string, name: string, picks: Picks): FighterSnapshot {
+  const selections = Object.fromEntries(
+    picks.map((p) => [p.attribute, { sourceFighter: POOL_BY_ID.get(p.fighterId)! }])
+  ) as unknown as AttributeSelections;
+  return { id, name, selections };
+}
+
+/**
+ * Once both players are locked: reveal the round and resolve Fight 1.
+ * Safe to call from any request, any number of times: the status change is
+ * conditional, and the series-wide fight number is unique, so however many
+ * requests race here, exactly one fight is stored. Returns true if it
+ * changed anything.
+ */
+async function ensureRevealAndFight(roundId: string, loaded: LoadedRound): Promise<boolean> {
+  const lockedCount = [...loaded.lockedAt.values()].filter(Boolean).length;
+  if (loaded.status === "drafting" && (!loaded.opponent || lockedCount < 2)) return false;
+  if (loaded.status === "abandoned") return false;
+
+  let changed = false;
+  if (loaded.status === "drafting") {
+    await admin()
+      .from("draft_rounds")
+      .update({ status: "revealed", revealed_at: new Date().toISOString() })
+      .eq("id", roundId)
+      .eq("status", "drafting");
+    changed = true;
+  }
+
+  const existing = check(await admin().from("fights").select("id").eq("draft_round_id", roundId).limit(1));
+  if (existing.length > 0) return changed;
+
+  const players = check(
+    await admin().from("series_participants").select("user_id, seat, display_name").eq("series_id", loaded.seriesId).order("seat")
+  );
+  const builds = check(
+    await admin().from("draft_builds").select("user_id, build_snapshot").eq("draft_round_id", roundId)
+  );
+  const [red, white] = players.map((p) =>
+    fighterFromPicks(p.user_id, p.display_name, picksOf(builds.find((b) => b.user_id === p.user_id)?.build_snapshot))
+  );
+  if (!red || !white) return changed;
+
+  const { count } = await admin()
+    .from("fights")
+    .select("id", { count: "exact", head: true })
+    .eq("series_id", loaded.seriesId);
+  const seed = randomBytes(4).readUInt32BE() % 2 ** 31;
+  const result = simulateFight(red, white, createRng(seed));
+  const inserted = await admin().from("fights").insert({
+    series_id: loaded.seriesId,
+    draft_round_id: roundId,
+    fight_number: (count ?? 0) + 1,
+    fight_seed: String(seed),
+    engine_version: ENGINE_VERSION,
+    winner_user_id: result.winnerId,
+    method: result.method,
+    finish_round: result.round,
+    finish_time: Math.round(result.roundTimeSeconds),
+    result_json: result as never,
+  });
+  if (inserted.error && inserted.error.code !== UNIQUE_VIOLATION) throw inserted.error;
+  return true;
+}
+
+async function loadReveal(roundId: string, userId: string, opponentId: string): Promise<RevealView> {
+  const build = maybe(
+    await admin()
+      .from("draft_builds")
+      .select("build_snapshot")
+      .eq("draft_round_id", roundId)
+      .eq("user_id", opponentId)
+      .maybeSingle()
+  );
+  const fight = maybe(
+    await admin()
+      .from("fights")
+      .select("id, fight_number, result_json")
+      .eq("draft_round_id", roundId)
+      .order("fight_number")
+      .limit(1)
+      .maybeSingle()
+  );
+  return {
+    myUserId: userId,
+    opponentUserId: opponentId,
+    opponentPicks: picksOf(build?.build_snapshot),
+    fight: fight ? { id: fight.id, number: fight.fight_number, result: fight.result_json as unknown as FightResult } : null,
+  };
 }
 
 function parseAction(raw: unknown): DraftActionInput {
@@ -338,7 +447,7 @@ export async function act(userId: string, roundId: unknown, sequence: unknown, r
 export async function lock(userId: string, roundId: unknown): Promise<DraftView> {
   const loaded = await loadRound(userId, roundId);
   const id = roundId as string;
-  if (loaded.lockedAt.get(userId)) return toView(userId, id, loaded);
+  if (loaded.lockedAt.get(userId)) return getView(userId, id);
   if (loaded.status !== "drafting") throw new MpError(409, "round_closed", "This draft is over");
   if (!isDraftComplete(loaded.state)) throw new MpError(400, "incomplete", "Make all eight picks first");
 
